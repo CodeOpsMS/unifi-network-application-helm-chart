@@ -54,3 +54,37 @@ gh workflow run release.yml \
 The workflow checks out the version tag and downloads the draft assets. `scripts/release.py` verifies the source commit, successful checks, package hash, and package/source agreement before publishing the supplied package. It does not run `helm package` again. Configure GitHub Pages publishing and repository/package permissions before the first release, and verify the resulting Helm repository and OCI downloads after the publishing workflow completes.
 
 Keep release versions immutable. If a publishing run stops after a partial upload, inspect its logs and the existing remote artifacts before retrying; do not replace a published package with different bytes. Release reports are available from the [1.0.0 release page](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.0) once that release is published.
+
+## Initial setup and browser review
+
+Use [post-setup-ui.py](scripts/integration/post-setup-ui.py) for an additional interactive review of the existing chart archive. Choose a disposable test environment and run after `make bootstrap`:
+
+```sh
+source .tools/env.sh
+python3 scripts/integration/post-setup-ui.py \
+  --package build/packages/unifi-network-application-1.0.0.tgz \
+  --context YOUR_CONTEXT --worker YOUR_TEST_WORKER --storage-class YOUR_STORAGE_CLASS \
+  --manual-setup --ui-timeout 1800 \
+  --evidence build/post-setup-ui \
+  --ready-file /private/tmp/unifi-post-setup-ready.json
+```
+
+The ready-file path must be absolute, outside the repository, and unused. The runner reserves it with `phase: "preparing"` and changes it to `phase: "ready"` when the browser handoff is available. The owner-only file points to a separate private `credentialsFile`, the loopback UI URL, and the `completionFile`. Read credentials only for the authorized browser session; never paste them, the handoff file, or screenshots containing them into public reports or artifacts. With `--manual-setup`, those credentials are the planned local account to create in the browser wizard. The interactive window is at most 30 minutes after handoff.
+
+The browser operator completes local initial setup without a cloud account, Wi-Fi creation, or device adoption, then checks login, dashboard, empty device/client lists, Wi-Fi and network settings pages, and the local administrator. Save a harmless controller-name change, log out and back in, and verify the changed name. Restart only this run's application pod after verifying the context and namespace from the handoff; the runner restores forwarding on the same loopback port. Verify the UI, saved name, and local login after restart.
+
+Only after performing every check, write this exact completion structure to the handoff's `completionFile`, using its actual `runId` in place of `RUN_ID` and owner-only file permissions:
+
+```json
+{
+  "runId": "RUN_ID",
+  "passed": true,
+  "checks": [
+    "initial-setup", "local-login", "dashboard", "devices-empty",
+    "clients-empty", "wifi-settings", "network-settings", "local-admin",
+    "controller-name-save", "logout-login", "post-restart-ui"
+  ]
+}
+```
+
+`passed` must be the JSON boolean `true`; the run identity and all 11 check names are mandatory. Report a failed review with `{"runId":"RUN_ID","passed":false,"checks":[]}` instead of acknowledging checks that did not pass. The runner then verifies persisted configuration, site and volume identity and the absence of adopted devices. It attempts automatic namespace/PV and private-file cleanup on completion, failure, or timeout. Review the resulting `build/post-setup-ui/<run-id>/summary.json`; success requires both `passed: true` and `cleanupPassed: true`. This additional UI test does not modify the published chart archive or the existing production controller.
