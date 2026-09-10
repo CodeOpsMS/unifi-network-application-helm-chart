@@ -106,7 +106,7 @@ Follow the [migration procedure](docs/OPERATIONS.de.md#migration-eines-bestehend
 
 ## Validation and releases
 
-Local chart checks and a separate cluster integration test are maintained in [scripts](scripts). The latter is an opt-in runtime check for a new temporary installation, with separate MongoDB credentials and storage. It does not restore the source controller or migrate its devices.
+Local chart checks and a separate cluster integration test are maintained in [scripts](scripts). The latter is an opt-in runtime check for a new temporary installation, with separate MongoDB credentials and storage. Before checking persistence, the test completes the disposable controller's local setup wizard with randomly generated credentials, without connecting a cloud account, creating a Wi-Fi network, or adopting devices. This establishes a configured controller: an unfinished setup remains in the factory-default state and can recreate its site on restart. The test does not restore the source controller or migrate its devices.
 
 Install the pinned development tools and run local checks with:
 

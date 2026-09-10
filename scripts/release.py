@@ -21,6 +21,7 @@ PAGES = "https://codeopsms.github.io/unifi-network-application-helm-chart"
 REQUIRED = {
     "worker-ready-and-avx", "mongo-authentication-and-special-character-credentials",
     "helm-and-kubernetes-server-dry-runs", "unifi-10.6.101-setup-status-and-runtime-digests",
+    "local-setup-completed-without-cloud-or-devices",
     "unifi-restart-persistence", "mongo-restart-persistence", "same-version-package-upgrade-persistence",
     "negative-missing-key", "negative-bad-password", "negative-unreachable-db",
     "ingress-host-routing-trusted-test-certificate-and-https-backend",

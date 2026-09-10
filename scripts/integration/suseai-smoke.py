@@ -8,6 +8,7 @@ All Kubernetes mutations carry the explicit context; cleanup verifies namespace 
 import argparse
 import base64
 import hashlib
+import http.cookiejar
 import json
 import os
 from pathlib import Path
@@ -212,11 +213,14 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                 time.sleep(0.2)
         raise RuntimeError("Port-forward did not become ready")
 
-    def status(self):
+    def status(self, check_setup=False):
         port = self.forward("service/unifi", 8443)
         data = json.loads(self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "20", f"https://127.0.0.1:{port}/status"]))
         assert data["meta"]["up"] is True, data
         assert data["meta"]["server_version"] == "10.6.101", data
+        self.write("status.json", data)
+        if not check_setup:
+            return
         # Fetch the management document directly; '/' need not return application HTML.
         html = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "20", f"https://127.0.0.1:{port}/manage"])
         self.write("setup-entry.html", html)
@@ -227,7 +231,58 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                                  "--output", os.devnull, "--write-out", "%{http_code}", f"https://127.0.0.1:{port}{scripts[0]}"])
         assert asset_status == "200", "Setup application bundle unavailable"
         self.report["setupAssetStatus"] = 200
-        self.write("status.json", data)
+
+    def complete_setup(self):
+        """Finish the pinned application's local wizard without adopting devices.
+
+        An unfinished wizard leaves UniFi in Factory Default state: its initial
+        site can be recreated on restart. These endpoints mirror the 10.6.101 UI.
+        Test credentials, cookies and CSRF headers never enter public evidence.
+        """
+        port = self.forward("service/unifi", 8443)
+        jar = self.private / "setup-cookies.txt"
+        headers = self.private / "setup-headers.txt"
+        password = secrets.token_urlsafe(32)
+        ssh_password = secrets.token_urlsafe(32)
+        self.sensitive.extend([password, ssh_password])
+
+        def api(path, payload=None):
+            lines = ["Content-Type: application/json"]
+            if jar.exists():
+                cookies = http.cookiejar.MozillaCookieJar(str(jar))
+                cookies.load(ignore_discard=True, ignore_expires=True)
+                for cookie in cookies:
+                    self.sensitive.append(cookie.value)
+                    if cookie.name == "csrf_token":
+                        lines.append("X-Csrf-Token: " + cookie.value)
+            headers.write_text("\n".join(lines) + "\n")
+            cmd = ["curl", "--silent", "--show-error", "--fail-with-body", "--insecure", "--max-time", "30",
+                   "--cookie", str(jar), "--cookie-jar", str(jar), "--header", "@" + str(headers)]
+            if payload is not None:
+                cmd += ["--data-binary", "@-"]
+            cmd += [f"https://127.0.0.1:{port}" + path]
+            response = self.run(cmd, data=json.dumps(payload) if payload is not None else None)
+            if path.startswith("/api/"):
+                result = json.loads(response)
+                assert result.get("meta", {}).get("rc") == "ok", "Local setup API failed: " + path
+                return result
+            return response
+
+        api("/setup/")
+        api("/api/cmd/sitemgr", {"cmd": "add-default-admin", "name": "smokeadmin",
+                                "email": "smoke-admin@example.invalid", "x_password": password})
+        api("/api/set/setting/super_identity", {"name": "Disposable integration controller"})
+        api("/api/set/setting/country", {"code": "276"})
+        api("/api/set/setting/locale", {"timezone": "Europe/Berlin"})
+        api("/api/set/setting/super_mgmt", {"autobackup_enabled": False, "backup_to_cloud_enabled": False})
+        api("/api/set/setting/mgmt", {"x_ssh_username": "smokeadmin", "x_ssh_password": ssh_password})
+        api("/api/cmd/system", {"cmd": "set-installed"})
+        html = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "30",
+                         f"https://127.0.0.1:{port}/manage"])
+        assert "<html" in html.lower() and '<base href="/setup/"' not in html, "Controller still serves initial setup"
+        self.mongo_eval("if(db.getSiblingDB('unifi').device.countDocuments({})!==0) throw Error('Unexpected adopted devices');")
+        self.status()
+        self.pass_check("local-setup-completed-without-cloud-or-devices")
 
     def runtime_images(self):
         result = {}
@@ -250,7 +305,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.pass_check("helm-and-kubernetes-server-dry-runs")
         print("Installing controller; startup budget 15 minutes", flush=True)
         self.write("install.log", self.h("install", *args, "--wait", "--timeout=16m", timeout=1020))
-        self.status()
+        self.status(check_setup=True)
         self.runtime_images()
         collections = json.loads(self.mongo_eval("print(JSON.stringify(db.getSiblingDB('unifi').getCollectionNames().filter(n => n !== 'smoke')));").splitlines()[-1])
         assert collections, "UniFi did not create application collections in MongoDB"
@@ -422,6 +477,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
             self.preflight()
             self.mongo()
             self.install()
+            self.complete_setup()
             self.persistence()
             self.negative_cases()
             self.ingress()
