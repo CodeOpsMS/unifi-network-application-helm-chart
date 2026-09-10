@@ -209,7 +209,13 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         # Fetch the management document directly; '/' need not return application HTML.
         html = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "20", f"https://127.0.0.1:{port}/manage"])
         self.write("setup-entry.html", html)
-        assert "unifi" in html.lower() and "<html" in html.lower(), "Setup HTML missing"
+        assert "<html" in html.lower() and '<base href="/setup/"' in html and 'id="root"' in html, "Setup HTML bootstrap missing"
+        scripts = re.findall(r'<script\b[^>]*src="(/setup/static/js/main\.[^"/]+\.js)"', html)
+        assert len(scripts) == 1, "Setup application bundle reference missing"
+        asset_status = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "30",
+                                 "--output", os.devnull, "--write-out", "%{http_code}", f"https://127.0.0.1:{port}{scripts[0]}"])
+        assert asset_status == "200", "Setup application bundle unavailable"
+        self.report["setupAssetStatus"] = 200
         self.write("status.json", data)
 
     def runtime_images(self):
