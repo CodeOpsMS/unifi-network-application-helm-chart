@@ -105,7 +105,8 @@ def publish(package, summary, validation):
         subprocess.run(args, check=True)
         (pages / ".nojekyll").touch()
         (pages / "index.html").write_text('<!doctype html><html lang="en"><meta charset="utf-8"><title>UniFi Helm repository</title><h1>UniFi Network Application Helm chart</h1><p><a href="https://github.com/' + REPOSITORY + '">Documentation and source</a></p><p><a href="index.yaml">Helm repository index</a></p></html>\n')
-        (pages / "artifacthub-repo.yml").write_text("# Add repositoryID after registering this repository in Artifact Hub.\n")
+        # Chart annotations are ready for Artifact Hub. Add artifacthub-repo.yml
+        # with the assigned repositoryID when the repository is registered there.
         subprocess.run(["git", "-C", str(pages), "config", "user.name", "github-actions[bot]"], check=True)
         subprocess.run(["git", "-C", str(pages), "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
         subprocess.run(["git", "-C", str(pages), "config", "credential.helper", "!gh auth git-credential"], check=True)

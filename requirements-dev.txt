@@ -1,4 +1,6 @@
 attrs==26.1.0
+# javaproperties==0.8.2, pinned to the universal wheel and its official SHA256.
+javaproperties @ https://files.pythonhosted.org/packages/fd/be/cf9d60226f19072d6033dd2696782446272c147f4527c1906ae99b784dcc/javaproperties-0.8.2-py3-none-any.whl#sha256=30141f83c45b574e204ee8170071535815994f468726813ec90f2d7f9fa6e7c1
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 pathspec==1.1.1

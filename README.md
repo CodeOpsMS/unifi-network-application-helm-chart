@@ -119,6 +119,7 @@ make package
 The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging writes `build/packages/unifi-network-application-1.0.0.tgz`. Run the separate integration procedure against those exact bytes when runtime verification is needed:
 
 ```sh
+source .tools/env.sh
 python3 scripts/integration/suseai-smoke.py \
   --package build/packages/unifi-network-application-1.0.0.tgz \
   --context suseai --worker laemk8saiworker2 --storage-class harvester \

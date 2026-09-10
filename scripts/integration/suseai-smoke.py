@@ -22,11 +22,20 @@ import tempfile
 import time
 from urllib.parse import quote
 
+import javaproperties
+
 MONGO_DIGEST = "sha256:b096b4cb9269f3ebcf363be63f1c50920f786879d03a1890347a3bf33f1f0df0"
 MONGO_AMD64 = "sha256:afef081f9a06e810d1781214234b8c0dab77f9f694567bf24b193b78d445491e"
 MONGO_IMAGE = f"mongo:7.0.41@{MONGO_DIGEST}"
 UNIFI_DIGEST = "sha256:ccadcad5c640c91388d79e66a3751e4de3c9accdcef181f76c142aeca612214d"
 UNIFI_AMD64 = "sha256:03668ea520c69c91344c0f3de8cd953c89989ccfa2fcdb10ef16d509686a57dc"
+
+
+def property_fingerprint(contents):
+    """Compare loaded Java property values, preserving meaningful whitespace."""
+    properties = javaproperties.loads(contents)
+    canonical = json.dumps(properties, sort_keys=True, ensure_ascii=True, separators=(",", ":")).encode()
+    return properties, hashlib.sha256(canonical).hexdigest()
 
 
 class Smoke:
@@ -251,16 +260,15 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.pass_check("unifi-10.6.101-setup-status-and-runtime-digests")
 
     def config_hashes(self):
-        contents = self.k("exec", "-n", self.ns, "deployment/unifi", "--", "cat", "/config/data/system.properties")
-        lines = sorted(line.strip() for line in contents.splitlines()
-                       if line.strip() and not line.lstrip().startswith(("#", "!")))
-        self.latest_properties = dict(line.split("=", 1) for line in lines if "=" in line)
+        encoded = self.k("exec", "-n", self.ns, "deployment/unifi", "--", "base64", "/config/data/system.properties")
+        contents = base64.b64decode("".join(encoded.split()), validate=True)
+        self.latest_properties, properties_hash = property_fingerprint(contents)
         # Java Properties comments may contain a save timestamp. PKCS12 containers
         # may be rewritten with fresh random salts while preserving the certificate.
         certificate = self.k("exec", "-n", self.ns, "deployment/unifi", "--", "keytool", "-exportcert", "-rfc",
                              "-alias", "unifi", "-keystore", "/config/data/keystore", "-storepass", "aircontrolenterprise")
         der = base64.b64decode("".join(line for line in certificate.splitlines() if not line.startswith("---")))
-        return {"normalizedPropertiesSha256": hashlib.sha256("\n".join(lines).encode()).hexdigest(),
+        return {"normalizedPropertiesSha256": properties_hash,
                 "certificateDerSha256": hashlib.sha256(der).hexdigest()}
 
     def persisted(self, hashes, volumes):

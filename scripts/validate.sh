@@ -40,6 +40,8 @@ if [[ $# -gt 0 ]]; then
   exit 1
 fi
 
+python3 scripts/validate-persistence.py
+
 for major in ${HELM_MAJORS:-3 4}; do
   [[ "$major" == 3 || "$major" == 4 ]]
   (
@@ -67,7 +69,8 @@ summary = {"passed": True, "sourceCommit": subprocess.run(["git", "rev-parse", "
            capture_output=True).stdout.strip(), "helmVersions": [version(report) for report in reports],
            "checks": {"yamlLint": True, "jsonSchema": True, "pythonSyntax": True,
                       "shellcheck": True, "bashSyntax": True, "shfmt": True, "actionlint": True,
-                      "gitDiffCheck": True, "chartTesting": True, "helmLint": True, "helmUnitTests": True},
+                      "gitDiffCheck": True, "chartTesting": True, "helmLint": True, "helmUnitTests": True,
+                      "javaPropertiesBehavior": True},
            "matrix": reports}
 Path("build/validation/validation.json").write_text(json.dumps(summary, indent=2) + "\n")
 PY
