@@ -178,9 +178,11 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.pass_check("mongo-authentication-and-special-character-credentials")
         self.record_volumes()
 
-    def mongo_eval(self, js, auth=True):
+    def mongo_eval(self, js, auth=True, root=False):
         if auth:
-            js = "if(!db.getSiblingDB('admin').auth(process.env.APP_USER,process.env.APP_PASSWORD)) throw Error('auth failed'); " + js
+            user = "MONGO_INITDB_ROOT_USERNAME" if root else "APP_USER"
+            password = "MONGO_INITDB_ROOT_PASSWORD" if root else "APP_PASSWORD"
+            js = f"if(!db.getSiblingDB('admin').auth(process.env.{user},process.env.{password})) throw Error('auth failed'); " + js
         return self.k("exec", "-n", self.ns, "deployment/mongo", "--", "mongosh", "--quiet", "--eval", js)
 
     def values(self, name="unifi", **overrides):
@@ -280,7 +282,8 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                                               if self.baseline_properties.get(key) != self.latest_properties.get(key))})
             raise AssertionError("Configuration values or keystore certificate changed; see persistence-difference.json")
         assert self.k("exec", "-n", self.ns, "deployment/unifi", "--", "cat", "/config/smoke-marker").strip() == self.run_id
-        self.mongo_eval("db=db.getSiblingDB('unifi'); if(!db.smoke.findOne({_id:'" + self.run_id + "'}).ok) throw Error('marker lost');")
+        self.mongo_eval("const marker=db.getSiblingDB('smoke_validation').markers.findOne({_id:'" + self.run_id + "'}); if(!marker || !marker.ok) throw Error('database marker lost');", root=True)
+        assert self.application_site_id() == self.site_id, "UniFi default site identity changed"
         self.record_volumes()
         assert self.volumes == volumes, "PVC/PV identity changed"
         self.status()
@@ -290,6 +293,12 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.baseline_properties = dict(self.latest_properties)
         self.write("config-hashes.json", hashes)
         self.k("exec", "-i", "-n", self.ns, "deployment/unifi", "--", "sh", "-c", "cat > /config/smoke-marker", data=self.run_id)
+        # UniFi owns and may initialize/reset its application databases. Keep the
+        # storage probe outside those databases, using only fixture-admin access.
+        # The application itself continues to receive its restricted user only.
+        self.mongo_eval("db.getSiblingDB('smoke_validation').markers.insertOne({_id:'" + self.run_id + "',ok:true});", root=True)
+        self.site_id = self.application_site_id()
+        self.report["applicationSiteIdSha256"] = hashlib.sha256(self.site_id.encode()).hexdigest()
         volumes = dict(self.volumes)
         for app in ["unifi", "mongo"]:
             self.guard()
@@ -309,6 +318,9 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.write("upgrade.log", self.h("upgrade", "unifi", str(Path(self.args.package).resolve()), "-n", self.ns, "-f", vals, "--wait", "--timeout=16m", timeout=1020))
         self.persisted(hashes, volumes)
         self.pass_check("same-version-package-upgrade-persistence")
+
+    def application_site_id(self):
+        return self.mongo_eval("const site=db.getSiblingDB('unifi').site.findOne({name:'default'}); if(!site) throw Error('default site missing'); print(site._id.toString());").strip()
 
     def negative_cases(self):
         self.secret("missing-key", {"username": self.app_user})

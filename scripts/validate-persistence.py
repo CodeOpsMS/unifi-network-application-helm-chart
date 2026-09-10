@@ -31,4 +31,3 @@ equal(b"uri=mongodb://db/\\\n  unifi\n", b"uri=mongodb://db/unifi\n")
 equal(b"name=caf\xe9\n", br"name=caf\u00e9" + b"\n")
 different(b"port=27017\n", b"port=27018\n")
 print("Java Properties persistence comparison: 8 behavioral checks passed")
-
