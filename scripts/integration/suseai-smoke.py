@@ -251,10 +251,26 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.pass_check("unifi-10.6.101-setup-status-and-runtime-digests")
 
     def config_hashes(self):
-        return self.k("exec", "-n", self.ns, "deployment/unifi", "--", "sha256sum", "/config/data/system.properties", "/config/data/keystore").strip()
+        contents = self.k("exec", "-n", self.ns, "deployment/unifi", "--", "cat", "/config/data/system.properties")
+        lines = sorted(line.strip() for line in contents.splitlines()
+                       if line.strip() and not line.lstrip().startswith(("#", "!")))
+        self.latest_properties = dict(line.split("=", 1) for line in lines if "=" in line)
+        # Java Properties comments may contain a save timestamp. PKCS12 containers
+        # may be rewritten with fresh random salts while preserving the certificate.
+        certificate = self.k("exec", "-n", self.ns, "deployment/unifi", "--", "keytool", "-exportcert", "-rfc",
+                             "-alias", "unifi", "-keystore", "/config/data/keystore", "-storepass", "aircontrolenterprise")
+        der = base64.b64decode("".join(line for line in certificate.splitlines() if not line.startswith("---")))
+        return {"normalizedPropertiesSha256": hashlib.sha256("\n".join(lines).encode()).hexdigest(),
+                "certificateDerSha256": hashlib.sha256(der).hexdigest()}
 
     def persisted(self, hashes, volumes):
-        assert self.config_hashes() == hashes, "Configuration or keystore changed"
+        current = self.config_hashes()
+        if current != hashes:
+            self.write("persistence-difference.json", {
+                "expected": hashes, "actual": current,
+                "changedPropertyKeys": sorted(key for key in self.baseline_properties.keys() | self.latest_properties.keys()
+                                              if self.baseline_properties.get(key) != self.latest_properties.get(key))})
+            raise AssertionError("Configuration values or keystore certificate changed; see persistence-difference.json")
         assert self.k("exec", "-n", self.ns, "deployment/unifi", "--", "cat", "/config/smoke-marker").strip() == self.run_id
         self.mongo_eval("db=db.getSiblingDB('unifi'); if(!db.smoke.findOne({_id:'" + self.run_id + "'}).ok) throw Error('marker lost');")
         self.record_volumes()
@@ -263,7 +279,8 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
 
     def persistence(self):
         hashes = self.config_hashes()
-        self.write("config-hashes.txt", hashes)
+        self.baseline_properties = dict(self.latest_properties)
+        self.write("config-hashes.json", hashes)
         self.k("exec", "-i", "-n", self.ns, "deployment/unifi", "--", "sh", "-c", "cat > /config/smoke-marker", data=self.run_id)
         volumes = dict(self.volumes)
         for app in ["unifi", "mongo"]:
