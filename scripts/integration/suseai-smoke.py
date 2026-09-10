@@ -413,8 +413,9 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                 # Check for a delayed false-ready response after authentication errors.
                 for _ in range(6):
                     time.sleep(5)
-                    pod = self.obj("get", "pods", "-n", self.ns, "-l", "app.kubernetes.io/instance=" + name)["items"][0]
-                    assert not any(c["type"] == "Ready" and c["status"] == "True" for c in pod["status"].get("conditions", [])), "Invalid credentials became Ready"
+                    pods = self.obj("get", "pods", "-n", self.ns, "-l", "app.kubernetes.io/instance=" + name)["items"]
+                    for pod in pods:
+                        assert not any(c["type"] == "Ready" and c["status"] == "True" for c in pod.get("status", {}).get("conditions", [])), "Invalid credentials became Ready"
             self.record_volumes()
             self.pass_check("negative-" + name, signal=observed)
             self.h("uninstall", name, "-n", self.ns, "--wait", "--timeout=3m")
@@ -468,7 +469,6 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                 self.k("wait", "--for=delete", "pv/" + name, "--timeout=5m")
             self.report["cleanupPassed"] = True
             print("PASS: owned namespace and all test PVs removed", flush=True)
-        shutil.rmtree(self.private)
 
     def execute(self):
         print(f"Testing package {self.report['packageSha256']} in {self.ns}", flush=True)
@@ -494,6 +494,8 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                 self.report["passed"] = False
                 error = error or exc
                 print("CLEANUP FAILED: " + self.clean(str(exc)), file=sys.stderr, flush=True)
+            finally:
+                shutil.rmtree(self.private)
             self.write("summary.json", self.report)
         if error:
             return 1
