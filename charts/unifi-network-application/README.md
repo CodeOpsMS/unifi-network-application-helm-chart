@@ -25,6 +25,10 @@ The default Java heap is 512–1024 MiB with a 1536 MiB memory request and a 2 G
 memory limit. Memory values use integer `Mi` or `Gi` quantities. Validation
 requires at least 512 MiB between the maximum heap and container memory limit.
 
+Startup, readiness, and liveness probes query HTTPS `/status` and require
+`meta.up=true` in its JSON response. UniFi can return HTTP 200 while still
+starting. These checks use `curl` and `jq`, verified in the pinned image.
+
 A chart-created 5 GiB PVC is retained on uninstall by default. To reuse storage,
 set `persistence.existingClaim`. Namespace deletion still deletes retained PVCs.
 Ephemeral storage requires both `persistence.enabled=false` and

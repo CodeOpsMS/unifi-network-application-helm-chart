@@ -68,6 +68,8 @@ Das Volume wird unter `/config` eingebunden. Die Anwendung verwendet dort unter 
 
 Der Chart arbeitet mit genau einer Anwendungsinstanz und `Recreate`. Parallel laufende Controller auf derselben Datenbank und demselben Konfigurationsvolume sind kein unterstütztes Skalierungsverfahren. Ein größeres `replicaCount` ist deshalb nicht vorgesehen.
 
+Startup-, Readiness- und Liveness-Probe rufen `/status` über HTTPS auf Port 8443 auf und verlangen im JSON den Wert `meta.up: true`. UniFi kann bereits während des Starts HTTP 200 liefern, obwohl `meta.up` noch `false` ist. Die Prüfung berücksichtigt daher den tatsächlichen Anwendungsstatus. Das Standardzeitfenster für den Start beträgt ungefähr 15 Minuten und lässt sich über die Probeparameter anpassen.
+
 Die Standardwerte sind 512 MiB Start-Heap, 1024 MiB maximaler Heap und 2 GiB Container-Speicherlimit. Das Limit umfasst auch Metaspace, Threads, native Bibliotheken und weitere Prozesse. Wenn der Heap erhöht wird, muss das Containerlimit mit ausreichend Abstand steigen. Die Werte werden über `java.initialHeapMiB` und `java.maxHeapMiB` eingestellt; verwende dafür keine zusätzlichen `MEM_STARTUP`-/`MEM_LIMIT`-Variablen, die mit den Chartwerten konkurrieren.
 
 Der LinuxServer-Container startet seine Initialisierung als root, richtet Dateien und Besitzrechte ein und nutzt PUID/PGID für die Anwendung. Ein pauschales `runAsNonRoot` oder ein schreibgeschütztes Root-Dateisystem kann diesen Start verhindern. Bei Pod-Security-Vorgaben ist diese tatsächliche Imageanforderung zu berücksichtigen. Das Volume muss die erforderlichen Besitzrechte unterstützen; bei Root-Squash oder vorbesitzten Daten sind Rechte und Mountverhalten vorab zu prüfen.

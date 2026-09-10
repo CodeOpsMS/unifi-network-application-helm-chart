@@ -72,7 +72,7 @@ See [values.yaml](charts/unifi-network-application/values.yaml) for every option
 | `ingress.className` | `nginx` | Ingress class; default annotations target ingress-nginx |
 | `ingress.host` / `tlsSecretName` | empty | Required when Ingress is enabled |
 
-The Deployment uses **one replica and `Recreate`**. This is not an active/active controller deployment. Startup, readiness, and liveness probes are configurable; the default startup allowance is about 15 minutes. Persistent storage is required by default; `persistence.enabled: false` additionally requires `persistence.testOnlyEphemeral: true` and is only for disposable tests.
+The Deployment uses **one replica and `Recreate`**. This is not an active/active controller deployment. Startup, readiness, and liveness probes are configurable; each reads HTTPS 8443 `/status` and requires the JSON field `meta.up` to be `true`. UniFi can return HTTP 200 while it is still starting, so the probes check application state as well as successful HTTP access. The default startup allowance is about 15 minutes. Persistent storage is required by default; `persistence.enabled: false` additionally requires `persistence.testOnlyEphemeral: true` and is only for disposable tests.
 
 The LinuxServer image initializes as root and then runs the application under PUID/PGID. The chart preserves that startup contract. Do not add an arbitrary `runAsNonRoot` or read-only root filesystem policy without testing a compatible image. Storage must support the image's ownership initialization; restricted Pod Security policies may reject this deployment.
 

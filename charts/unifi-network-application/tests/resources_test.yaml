@@ -22,20 +22,29 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].resources.limits.memory
           value: 2Gi
-  - it: checks the HTTPS status endpoint for startup
+  - it: checks semantic readiness instead of accepting every HTTP 200 response
     asserts:
       - equal:
-          path: spec.template.spec.containers[0].startupProbe
-          value:
-            httpGet:
-              scheme: HTTPS
-              path: /status
-              port: https
-            initialDelaySeconds: 0
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 90
-            successThreshold: 1
+          path: spec.template.spec.containers[0].startupProbe.exec.command[0]
+          value: /bin/sh
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.exec.command[1]
+          value: -ec
+      - matchRegex:
+          path: spec.template.spec.containers[0].startupProbe.exec.command[2]
+          pattern: https://127[.]0[.]0[.]1:8443/status
+      - matchRegex:
+          path: spec.template.spec.containers[0].startupProbe.exec.command[2]
+          pattern: jq --exit-status
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 90
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.periodSeconds
+          value: 10
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.timeoutSeconds
+          value: 5
   - it: allows operators to tune slow database and startup timing
     set:
       probes.startup.failureThreshold: 120

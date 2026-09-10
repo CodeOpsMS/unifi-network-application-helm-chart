@@ -4,10 +4,12 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
 import tarfile
+import tempfile
 
 import yaml
 
@@ -74,9 +76,37 @@ def check_common(documents):
                 f"{name} must use existing Secret reference")
     require("CERTFILE" not in env and "KEYFILE" not in env, "Unsupported certificate import variables")
     for name in ["startupProbe", "readinessProbe", "livenessProbe"]:
-        require(container[name]["httpGet"]["scheme"] == "HTTPS", f"{name} must use HTTPS")
-        require(container[name]["httpGet"]["path"] == "/status", f"{name} must check /status")
+        command = container[name]["exec"]["command"]
+        require(command[:2] == ["/bin/sh", "-ec"], f"{name} must fail when a command fails")
+        require("https://127.0.0.1:8443/status" in command[2], f"{name} must check local HTTPS /status")
+        require("jq --exit-status" in command[2], f"{name} must check semantic readiness in the JSON body")
+        require(f"--max-time {max(1, container[name]['timeoutSeconds'] - 1)}" in command[2],
+                f"{name} curl timeout must fit within the probe timeout")
     return deploy, container, env, service
+
+
+def check_probe_behavior(container):
+    """Execute the actual probe with an isolated curl stub and the real JSON parser."""
+    cases = [("ready", '{"meta":{"up":true}}', 0, True),
+             ("http-200-but-not-ready", '{"meta":{"up":false}}', 0, False),
+             ("missing-readiness", '{"meta":{}}', 0, False),
+             ("string-is-not-boolean", '{"meta":{"up":"true"}}', 0, False),
+             ("malformed-json", 'not JSON', 0, False),
+             ("empty-response", '', 0, False),
+             ("curl-fails-after-body", '{"meta":{"up":true}}', 22, False),
+             ("curl-timeout", '', 28, False)]
+    with tempfile.TemporaryDirectory(prefix="unifi-probe-test-") as temporary:
+        curl = Path(temporary) / "curl"
+        curl.write_text('#!/bin/sh\nprintf \'%s\' "$MOCK_STATUS"\nexit "${MOCK_CURL_EXIT:-0}"\n')
+        curl.chmod(0o755)
+        for probe in ["startupProbe", "readinessProbe", "livenessProbe"]:
+            for name, response, exit_code, expected in cases:
+                env = dict(os.environ, PATH=temporary + os.pathsep + os.environ["PATH"],
+                           MOCK_STATUS=response, MOCK_CURL_EXIT=str(exit_code))
+                result = run(container[probe]["exec"]["command"], env=env, timeout=10)
+                require((result.returncode == 0) == expected,
+                        f"{probe}/{name}: wrong health result, exit={result.returncode}, stderr={result.stderr}")
+    return len(cases) * 3
 
 
 POSITIVE = {
@@ -238,6 +268,9 @@ def main():
         manifest.write_text(result.stdout)
         documents = [doc for doc in yaml.safe_load_all(result.stdout) if doc]
         check_case(name, documents)
+        if name == "default":
+            container = object_of(documents, "Deployment")["spec"]["template"]["spec"]["containers"][0]
+            summary["healthProbeBehaviorCases"] = check_probe_behavior(container)
         summary["positive"].append(name)
     # Validate all generated objects against a fixed revision of strict Kubernetes schemas.
     manifests = [str(args.output / f"{name}.yaml") for name in POSITIVE]

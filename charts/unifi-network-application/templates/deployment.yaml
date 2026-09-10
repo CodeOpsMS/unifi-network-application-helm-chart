@@ -80,10 +80,13 @@ spec:
               mountPath: /config
           {{- range $name := list "startup" "readiness" "liveness" }}
           {{ $name }}Probe:
-            httpGet:
-              scheme: HTTPS
-              path: /status
-              port: https
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - >-
+                  response="$(curl --fail --silent --show-error --insecure --max-time {{ max 1 (sub (index $.Values.probes $name).timeoutSeconds 1) }} https://127.0.0.1:8443/status)";
+                  printf '%s' "$response" | jq --exit-status '.meta.up == true' >/dev/null
             {{- toYaml (index $.Values.probes $name) | nindent 12 }}
           {{- end }}
           resources:

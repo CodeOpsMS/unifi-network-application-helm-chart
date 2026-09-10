@@ -52,6 +52,8 @@ securityContext:
 terminationGracePeriodSeconds: 90
 podAnnotations: {}
 
+# The image's curl/jq query HTTPS /status and require JSON meta.up=true.
+# UniFi can return HTTP 200 before it is ready; HTTP status alone is insufficient.
 probes:
   startup:
     initialDelaySeconds: 0
