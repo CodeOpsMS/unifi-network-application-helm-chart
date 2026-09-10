@@ -206,7 +206,9 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         data = json.loads(self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "20", f"https://127.0.0.1:{port}/status"]))
         assert data["meta"]["up"] is True, data
         assert data["meta"]["server_version"] == "10.6.101", data
-        html = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "20", f"https://127.0.0.1:{port}/"])
+        # Fetch the management document directly; '/' need not return application HTML.
+        html = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "20", f"https://127.0.0.1:{port}/manage"])
+        self.write("setup-entry.html", html)
         assert "unifi" in html.lower() and "<html" in html.lower(), "Setup HTML missing"
         self.write("status.json", data)
 
