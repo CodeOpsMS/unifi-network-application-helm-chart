@@ -1,0 +1,214 @@
+{
+  "versions": {
+    "helm3": "3.21.3",
+    "helm4": "4.2.4",
+    "ct": "3.14.0",
+    "kubeconform": "0.8.0",
+    "shfmt": "3.14.1",
+    "actionlint": "1.7.12",
+    "shellcheck": "0.11.0",
+    "unittest": "1.1.1"
+  },
+  "platforms": {
+    "darwin-amd64": [
+      {
+        "name": "helm3",
+        "url": "https://get.helm.sh/helm-v3.21.3-darwin-amd64.tar.gz",
+        "sha256": "76d0db4730b05d3d625eee11e80f0721b32b4d8422f4e5d093de6337bf3ac9f8",
+        "member": "darwin-amd64/helm"
+      },
+      {
+        "name": "helm4",
+        "url": "https://get.helm.sh/helm-v4.2.4-darwin-amd64.tar.gz",
+        "sha256": "6c163d687ca03c3b5c01928e53bbbcf9518278f47ce7a2f249a5a08e8bdaa2bc",
+        "member": "darwin-amd64/helm"
+      },
+      {
+        "name": "ct",
+        "url": "https://github.com/helm/chart-testing/releases/download/v3.14.0/chart-testing_3.14.0_darwin_amd64.tar.gz",
+        "sha256": "6dbad5d05a357f6837764c0620c84e707c81189d6f5e9946643276848f5f7116",
+        "member": "ct"
+      },
+      {
+        "name": "kubeconform",
+        "url": "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-darwin-amd64.tar.gz",
+        "sha256": "71dbc87ac9f24099a62b93570e65aa06312ba6ac8aea63b7f86e9d999edf5a92",
+        "member": "kubeconform"
+      },
+      {
+        "name": "shfmt",
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_darwin_amd64",
+        "sha256": "d33eee0da0f92835b3562e9767a05cee7e4eaeef47daa03bfd09da17b4b590a6",
+        "member": ""
+      },
+      {
+        "name": "actionlint",
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_amd64.tar.gz",
+        "sha256": "5b44c3bc2255115c9b69e30efc0fecdf498fdb63c5d58e17084fd5f16324c644",
+        "member": "actionlint"
+      },
+      {
+        "name": "shellcheck",
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.x86_64.tar.gz",
+        "sha256": "c2c15e08df0e8fbc374c335b230a7ee958c313fa5714817a59aa59f1aa594f51",
+        "member": "shellcheck-v0.11.0/shellcheck"
+      },
+      {
+        "name": "unittest",
+        "url": "https://github.com/helm-unittest/helm-unittest/releases/download/v1.1.1/helm-unittest-macos-amd64-1.1.1.tgz",
+        "sha256": "aeeb891c34e0f447a6f55bbe1605704b46fbc4da41a4448e3227ec57aecbf92b",
+        "member": "*"
+      }
+    ],
+    "darwin-arm64": [
+      {
+        "name": "helm3",
+        "url": "https://get.helm.sh/helm-v3.21.3-darwin-arm64.tar.gz",
+        "sha256": "19879a848cad832b7a1ac24b767a481d20fb3b95ab53a220849649422ada144e",
+        "member": "darwin-arm64/helm"
+      },
+      {
+        "name": "helm4",
+        "url": "https://get.helm.sh/helm-v4.2.4-darwin-arm64.tar.gz",
+        "sha256": "d747eb4e28bd2727173d15b759fa0a17822291ec09db7ced3d55af290a3661a2",
+        "member": "darwin-arm64/helm"
+      },
+      {
+        "name": "ct",
+        "url": "https://github.com/helm/chart-testing/releases/download/v3.14.0/chart-testing_3.14.0_darwin_arm64.tar.gz",
+        "sha256": "db10dbbb42b110c7a5da5a3202908f32ad2ca6ad600d423426dc7886d09aad07",
+        "member": "ct"
+      },
+      {
+        "name": "kubeconform",
+        "url": "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-darwin-arm64.tar.gz",
+        "sha256": "f84f4dfbebf4a6b0b230385fa065a39ea35e02608c2b50d025dcf64775a69d67",
+        "member": "kubeconform"
+      },
+      {
+        "name": "shfmt",
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_darwin_arm64",
+        "sha256": "b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a5847e5",
+        "member": ""
+      },
+      {
+        "name": "actionlint",
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz",
+        "sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+        "member": "actionlint"
+      },
+      {
+        "name": "shellcheck",
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.gz",
+        "sha256": "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f",
+        "member": "shellcheck-v0.11.0/shellcheck"
+      },
+      {
+        "name": "unittest",
+        "url": "https://github.com/helm-unittest/helm-unittest/releases/download/v1.1.1/helm-unittest-macos-arm64-1.1.1.tgz",
+        "sha256": "0163ad5fe1aedb75d09e42d3bfe930680daf628471e4cc5130980a6abfe51e8e",
+        "member": "*"
+      }
+    ],
+    "linux-amd64": [
+      {
+        "name": "helm3",
+        "url": "https://get.helm.sh/helm-v3.21.3-linux-amd64.tar.gz",
+        "sha256": "15e041a93a590dce8100f39385cd98c84a765c9e36aeeb9e2dc6ff9e4769e2e0",
+        "member": "linux-amd64/helm"
+      },
+      {
+        "name": "helm4",
+        "url": "https://get.helm.sh/helm-v4.2.4-linux-amd64.tar.gz",
+        "sha256": "c306b46f719b0a4da32d0f78ee21bf90ce8d602f15b22ab753f0674d1670a7f3",
+        "member": "linux-amd64/helm"
+      },
+      {
+        "name": "ct",
+        "url": "https://github.com/helm/chart-testing/releases/download/v3.14.0/chart-testing_3.14.0_linux_amd64.tar.gz",
+        "sha256": "d16f0583616885423826241164ce1f6589c6fe5332fa74f374ebd2bd3cb3fe1f",
+        "member": "ct"
+      },
+      {
+        "name": "kubeconform",
+        "url": "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz",
+        "sha256": "9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883",
+        "member": "kubeconform"
+      },
+      {
+        "name": "shfmt",
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64",
+        "sha256": "76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf",
+        "member": ""
+      },
+      {
+        "name": "actionlint",
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz",
+        "sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+        "member": "actionlint"
+      },
+      {
+        "name": "shellcheck",
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.gz",
+        "sha256": "b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6",
+        "member": "shellcheck-v0.11.0/shellcheck"
+      },
+      {
+        "name": "unittest",
+        "url": "https://github.com/helm-unittest/helm-unittest/releases/download/v1.1.1/helm-unittest-linux-amd64-1.1.1.tgz",
+        "sha256": "07c4fee69e9402e5f66f35b4f932b66afdf9c848637f06196fc479b501d6ad29",
+        "member": "*"
+      }
+    ],
+    "linux-arm64": [
+      {
+        "name": "helm3",
+        "url": "https://get.helm.sh/helm-v3.21.3-linux-arm64.tar.gz",
+        "sha256": "67f58155079ff9ffab98ba5c88daff0ed9b542f3a4732f5dd426dde7dd0f5244",
+        "member": "linux-arm64/helm"
+      },
+      {
+        "name": "helm4",
+        "url": "https://get.helm.sh/helm-v4.2.4-linux-arm64.tar.gz",
+        "sha256": "564de2191b881e9f71b5606b25345821ea1682f06ab90499d3ab22b530176da1",
+        "member": "linux-arm64/helm"
+      },
+      {
+        "name": "ct",
+        "url": "https://github.com/helm/chart-testing/releases/download/v3.14.0/chart-testing_3.14.0_linux_arm64.tar.gz",
+        "sha256": "7b035bbbd0768fba33983e81c15445e33e9c8281d329100852a342ecfd0b16b7",
+        "member": "ct"
+      },
+      {
+        "name": "kubeconform",
+        "url": "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-arm64.tar.gz",
+        "sha256": "1f53fc8e81258197a35e8603054162a5af1de8c5af13746c71ab680d9534ed87",
+        "member": "kubeconform"
+      },
+      {
+        "name": "shfmt",
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_arm64",
+        "sha256": "5f2db09dae91fca848f7adbdd014632e921a383863a2ad7e0450ad3aba0c6489",
+        "member": ""
+      },
+      {
+        "name": "actionlint",
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_arm64.tar.gz",
+        "sha256": "325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6",
+        "member": "actionlint"
+      },
+      {
+        "name": "shellcheck",
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.aarch64.tar.gz",
+        "sha256": "68a8133197a50beb8803f8d42f9908d1af1c5540d4bb05fdfca8c1fa47decefc",
+        "member": "shellcheck-v0.11.0/shellcheck"
+      },
+      {
+        "name": "unittest",
+        "url": "https://github.com/helm-unittest/helm-unittest/releases/download/v1.1.1/helm-unittest-linux-arm64-1.1.1.tgz",
+        "sha256": "9ac79f441ea65bd095c632c66a6e429b3d89e7aacb5a157d891dc0b6217e9045",
+        "member": "*"
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+# Modified by CodeOpsMS in 2026: independent release metadata and external database design.
+apiVersion: v2
+name: unifi-network-application
+description: UniFi Network Application with an externally managed MongoDB and persistent configuration.
+type: application
+version: 1.0.0
+appVersion: "10.6.101"
+kubeVersion: ">=1.25.0-0"
+home: https://github.com/CodeOpsMS/unifi-network-application-helm-chart
+sources:
+  - https://github.com/CodeOpsMS/unifi-network-application-helm-chart
+  - https://github.com/linuxserver/docker-unifi-network-application
+maintainers:
+  - name: CodeOpsMS
+    url: https://github.com/CodeOpsMS
+keywords:
+  - unifi
+  - ubiquiti
+  - network
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release with external MongoDB, existing Secrets, persistent storage, and optional HTTPS Ingress.
+  artifacthub.io/images: |
+    - name: unifi-network-application
+      image: lscr.io/linuxserver/unifi-network-application:10.6.101-ls145@sha256:ccadcad5c640c91388d79e66a3751e4de3c9accdcef181f76c142aeca612214d
+  artifacthub.io/links: |
+    - name: Chart source
+      url: https://github.com/CodeOpsMS/unifi-network-application-helm-chart
+    - name: Image documentation
+      url: https://docs.linuxserver.io/images/docker-unifi-network-application/

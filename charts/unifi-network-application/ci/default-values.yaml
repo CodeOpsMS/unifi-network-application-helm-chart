@@ -1,0 +1,4 @@
+# Placeholder references for lint/render only; this does not provision a DB.
+externalDatabase:
+  host: mongo.database.svc.cluster.local
+  existingSecret: unifi-db

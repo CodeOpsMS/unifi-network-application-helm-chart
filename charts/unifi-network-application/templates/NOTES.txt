@@ -1,0 +1,22 @@
+UniFi Network Application uses your separately managed MongoDB.
+Database credentials are read from Secret {{ .Values.externalDatabase.existingSecret }}.
+
+{{- if .Values.ingress.enabled }}
+Management URL: https://{{ .Values.ingress.host }}{{ .Values.ingress.path }}
+{{- else }}
+For local administration:
+  kubectl --namespace {{ .Release.Namespace }} port-forward --address 127.0.0.1 service/{{ include "unifi-network-application.fullname" . }} 8443:{{ .Values.service.ports.https.port }}
+Open https://127.0.0.1:8443 and accept UniFi's self-signed backend certificate.
+{{- end }}
+
+Devices need a stable, reachable Inform address (TCP 8080) and UDP 3478.
+The management Ingress does not expose these device ports.
+{{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) .Values.persistence.retain }}
+The configuration PVC is retained on uninstall. Deleting the namespace deletes it.
+{{- end }}
+{{- if not .Values.persistence.enabled }}
+TEST MODE: /config is ephemeral and is lost when the Pod is replaced.
+{{- end }}
+
+On existing storage, changes to database environment variables alone do not update
+/config/data/system.properties. Follow the documented database maintenance procedure.

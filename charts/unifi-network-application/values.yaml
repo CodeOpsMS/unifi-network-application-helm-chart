@@ -1,0 +1,134 @@
+# Modified by CodeOpsMS in 2026: external database, Secrets, resource validation,
+# persistent storage controls, probes, and HTTPS Ingress configuration.
+fullnameOverride: ""
+nameOverride: ""
+replicaCount: 1
+
+image:
+  repository: lscr.io/linuxserver/unifi-network-application
+  tag: "10.6.101-ls145"
+  # Change the tag and digest together when upgrading the application.
+  digest: sha256:ccadcad5c640c91388d79e66a3751e4de3c9accdcef181f76c142aeca612214d
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+externalDatabase:
+  # Required. The database and its user must be prepared separately.
+  host: ""
+  port: 27017
+  database: unifi
+  authSource: admin
+  tls: false
+  # Required. Secret in this release's namespace; URI-encode both credentials.
+  existingSecret: ""
+  usernameKey: username
+  passwordKey: password
+
+env:
+  TZ: Etc/UTC
+  PUID: "1000"
+  PGID: "1000"
+# Kubernetes EnvVar objects: a string value or valueFrom.secretKeyRef.
+# Chart-managed variables (including their FILE__ forms) cannot be overridden.
+extraEnv: []
+
+java:
+  initialHeapMiB: 512
+  maxHeapMiB: 1024
+resources:
+  requests:
+    memory: 1536Mi
+    cpu: 250m
+  limits:
+    memory: 2Gi
+    cpu: "2"
+
+# LinuxServer uses root during initialization, then runs UniFi as PUID/PGID.
+podSecurityContext: {}
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: false
+terminationGracePeriodSeconds: 90
+podAnnotations: {}
+
+probes:
+  startup:
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 90
+    successThreshold: 1
+  readiness:
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  liveness:
+    initialDelaySeconds: 0
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  size: 5Gi
+  # Empty: use the cluster default. "-": explicitly request no StorageClass.
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  # Retains a chart-created PVC on uninstall; namespace deletion still deletes it.
+  retain: true
+  # Both enabled=false and testOnlyEphemeral=true are needed for emptyDir.
+  testOnlyEphemeral: false
+
+service:
+  type: ClusterIP
+  annotations: {}
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  # Applied only to NodePort/LoadBalancer Services.
+  externalTrafficPolicy: Cluster
+  ports:
+    https:
+      port: 8443
+      nodePort: 0
+    inform:
+      port: 8080
+      nodePort: 0
+    stun:
+      port: 3478
+      nodePort: 0
+    discovery:
+      port: 10001
+      nodePort: 0
+  portal:
+    enabled: false
+    httpPort: 8880
+    httpsPort: 8843
+    httpNodePort: 0
+    httpsNodePort: 0
+  speedtest:
+    enabled: false
+    port: 6789
+    nodePort: 0
+  syslog:
+    enabled: false
+    port: 5514
+    nodePort: 0
+
+ingress:
+  enabled: false
+  className: nginx
+  host: ""
+  tlsSecretName: ""
+  path: /
+  # NGINX HTTPS backend and disabled self-signed peer verification are added
+  # automatically. A trusted backend can override proxy-ssl-verify and add a CA.
+  annotations: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

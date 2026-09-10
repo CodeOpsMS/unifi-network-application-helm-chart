@@ -1,0 +1,702 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UniFi Network Application Helm chart values",
+  "description": "External MongoDB credentials and host are mandatory at installation. Cross-field invariants are validated by templates.",
+  "definitions": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+      "maxLength": 253
+    },
+    "optionalName": {
+      "type": "string",
+      "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+      "maxLength": 253
+    },
+    "servicePort": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "nodePort": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "port",
+        "nodePort"
+      ]
+    },
+    "memory": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,8}(Mi|Gi)$"
+    },
+    "cpu": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "multipleOf": 0.001
+        },
+        {
+          "type": "string",
+          "pattern": "^([1-9][0-9]*m|[1-9][0-9]*(\\.[0-9]{1,3})?|0\\.(00[1-9]|0[1-9][0-9]?|[1-9][0-9]{0,2}))$"
+        }
+      ]
+    },
+    "resourceList": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "memory": {
+          "$ref": "#/definitions/memory"
+        },
+        "cpu": {
+          "$ref": "#/definitions/cpu"
+        }
+      },
+      "required": [
+        "memory",
+        "cpu"
+      ]
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "initialDelaySeconds",
+        "periodSeconds",
+        "timeoutSeconds",
+        "failureThreshold",
+        "successThreshold"
+      ]
+    },
+    "singleSuccessProbe": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/probe"
+        },
+        {
+          "properties": {
+            "successThreshold": {
+              "const": 1
+            }
+          }
+        }
+      ]
+    },
+    "secretKeyRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/name"
+        },
+        "key": {
+          "type": "string",
+          "pattern": "^[-._a-zA-Z0-9]+$",
+          "maxLength": 253
+        },
+        "optional": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "key"
+      ]
+    },
+    "envVar": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "value": {
+          "type": "string"
+        },
+        "valueFrom": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "secretKeyRef": {
+              "$ref": "#/definitions/secretKeyRef"
+            }
+          },
+          "required": [
+            "secretKeyRef"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "value"
+          ],
+          "not": {
+            "required": [
+              "valueFrom"
+            ]
+          }
+        },
+        {
+          "required": [
+            "valueFrom"
+          ],
+          "not": {
+            "required": [
+              "value"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "fullnameOverride": {
+      "type": "string",
+      "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63
+    },
+    "nameOverride": {
+      "type": "string",
+      "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63
+    },
+    "replicaCount": {
+      "type": "integer",
+      "const": 1
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^$|^sha256:[a-f0-9]{64}$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
+      },
+      "required": [
+        "repository",
+        "tag",
+        "digest",
+        "pullPolicy"
+      ]
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/name"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "externalDatabase": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$",
+          "maxLength": 253
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "database": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "maxLength": 55
+        },
+        "authSource": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "maxLength": 63
+        },
+        "tls": {
+          "type": "boolean"
+        },
+        "existingSecret": {
+          "$ref": "#/definitions/optionalName"
+        },
+        "usernameKey": {
+          "type": "string",
+          "pattern": "^[-._a-zA-Z0-9]+$",
+          "maxLength": 253
+        },
+        "passwordKey": {
+          "type": "string",
+          "pattern": "^[-._a-zA-Z0-9]+$",
+          "maxLength": 253
+        }
+      },
+      "required": [
+        "host",
+        "port",
+        "database",
+        "authSource",
+        "tls",
+        "existingSecret",
+        "usernameKey",
+        "passwordKey"
+      ]
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "TZ": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_+:/-]+$"
+        },
+        "PUID": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          ]
+        },
+        "PGID": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          ]
+        }
+      },
+      "required": [
+        "TZ",
+        "PUID",
+        "PGID"
+      ]
+    },
+    "extraEnv": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/envVar"
+      }
+    },
+    "java": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "initialHeapMiB": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "maxHeapMiB": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "initialHeapMiB",
+        "maxHeapMiB"
+      ]
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "$ref": "#/definitions/resourceList"
+        },
+        "limits": {
+          "$ref": "#/definitions/resourceList"
+        }
+      },
+      "required": [
+        "requests",
+        "limits"
+      ]
+    },
+    "podSecurityContext": {
+      "type": "object"
+    },
+    "securityContext": {
+      "type": "object"
+    },
+    "terminationGracePeriodSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "podAnnotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "probes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "startup": {
+          "$ref": "#/definitions/singleSuccessProbe"
+        },
+        "readiness": {
+          "$ref": "#/definitions/probe"
+        },
+        "liveness": {
+          "$ref": "#/definitions/singleSuccessProbe"
+        }
+      },
+      "required": [
+        "startup",
+        "readiness",
+        "liveness"
+      ]
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "existingClaim": {
+          "$ref": "#/definitions/optionalName"
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,8}(Mi|Gi|Ti)$"
+        },
+        "storageClass": {
+          "type": "string",
+          "pattern": "^$|^-$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "accessMode": {
+          "enum": [
+            "ReadWriteOnce",
+            "ReadWriteOncePod",
+            "ReadWriteMany"
+          ]
+        },
+        "retain": {
+          "type": "boolean"
+        },
+        "testOnlyEphemeral": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "existingClaim",
+        "size",
+        "storageClass",
+        "accessMode",
+        "retain",
+        "testOnlyEphemeral"
+      ]
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "loadBalancerIP": {
+          "type": "string"
+        },
+        "loadBalancerSourceRanges": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F:.]+/[0-9]{1,3}$"
+          }
+        },
+        "externalTrafficPolicy": {
+          "enum": [
+            "Cluster",
+            "Local"
+          ]
+        },
+        "ports": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "https": {
+              "$ref": "#/definitions/servicePort"
+            },
+            "inform": {
+              "$ref": "#/definitions/servicePort"
+            },
+            "stun": {
+              "$ref": "#/definitions/servicePort"
+            },
+            "discovery": {
+              "$ref": "#/definitions/servicePort"
+            }
+          },
+          "required": [
+            "https",
+            "inform",
+            "stun",
+            "discovery"
+          ]
+        },
+        "portal": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "httpPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "httpsPort": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "httpNodePort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            },
+            "httpsNodePort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "enabled",
+            "httpPort",
+            "httpsPort",
+            "httpNodePort",
+            "httpsNodePort"
+          ]
+        },
+        "speedtest": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "nodePort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "enabled",
+            "port",
+            "nodePort"
+          ]
+        },
+        "syslog": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "nodePort": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "enabled",
+            "port",
+            "nodePort"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "annotations",
+        "loadBalancerIP",
+        "loadBalancerSourceRanges",
+        "externalTrafficPolicy",
+        "ports",
+        "portal",
+        "speedtest",
+        "syslog"
+      ]
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "$ref": "#/definitions/optionalName"
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^$|^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+          "maxLength": 253
+        },
+        "tlsSecretName": {
+          "$ref": "#/definitions/optionalName"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/[^?#]*$"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "className",
+        "host",
+        "tlsSecretName",
+        "path",
+        "annotations"
+      ]
+    },
+    "nodeSelector": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "tolerations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "affinity": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "fullnameOverride",
+    "nameOverride",
+    "replicaCount",
+    "image",
+    "imagePullSecrets",
+    "externalDatabase",
+    "env",
+    "extraEnv",
+    "java",
+    "resources",
+    "podSecurityContext",
+    "securityContext",
+    "terminationGracePeriodSeconds",
+    "podAnnotations",
+    "probes",
+    "persistence",
+    "service",
+    "ingress",
+    "nodeSelector",
+    "tolerations",
+    "affinity"
+  ]
+}

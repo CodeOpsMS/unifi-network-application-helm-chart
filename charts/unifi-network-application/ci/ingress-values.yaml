@@ -1,0 +1,11 @@
+# Placeholder references for lint/render only.
+externalDatabase:
+  host: mongo.database.svc.cluster.local
+  existingSecret: unifi-db
+ingress:
+  enabled: true
+  className: nginx
+  host: unifi.example.invalid
+  tlsSecretName: unifi-tls
+persistence:
+  existingClaim: unifi-config

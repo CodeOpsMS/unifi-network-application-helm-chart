@@ -1,0 +1,50 @@
+# Replace the example hostname, storage class, and reserved address before use.
+# This file contains no credentials; create the referenced Secret separately.
+externalDatabase:
+  host: mongodb.database.svc.cluster.local
+  port: 27017
+  database: unifi
+  authSource: admin
+  tls: false
+  existingSecret: unifi-database
+  usernameKey: username
+  passwordKey: password
+
+persistence:
+  enabled: true
+  storageClass: harvester
+  size: 10Gi
+  retain: true
+
+env:
+  TZ: Europe/Berlin
+  PUID: "1000"
+  PGID: "1000"
+
+java:
+  initialHeapMiB: 512
+  maxHeapMiB: 1024
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 1536Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+service:
+  type: LoadBalancer
+  # Documentation-only address: replace with one allocated by your provider.
+  loadBalancerIP: 192.0.2.50
+  # Provider must support mixed TCP and UDP in this Service.
+  # Add provider-specific annotations or source ranges when appropriate.
+  ports:
+    https:
+      port: 8443
+    inform:
+      port: 8080
+    stun:
+      port: 3478
+    discovery:
+      port: 10001

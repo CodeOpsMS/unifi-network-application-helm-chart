@@ -1,0 +1,37 @@
+{{/* Modified by CodeOpsMS in 2026: component selectors, stable target ports, and optional services. */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "unifi-network-application.fullname" . }}
+  labels:
+    {{- include "unifi-network-application.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if ne .Values.service.type "ClusterIP" }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+  {{- end }}
+  {{- if eq .Values.service.type "LoadBalancer" }}
+  {{- with .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  selector:
+    {{- include "unifi-network-application.selectorLabels" . | nindent 4 }}
+  ports:
+    {{- range (include "unifi-network-application.ports" . | fromJsonArray) }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: {{ .protocol }}
+      {{- if .nodePort }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
+    {{- end }}

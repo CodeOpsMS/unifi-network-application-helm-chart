@@ -1,0 +1,110 @@
+{{/* Modified by CodeOpsMS in 2026: external DB Secrets, heap, startup probes, and PVC controls. */}}
+{{- include "unifi-network-application.validate" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "unifi-network-application.fullname" . }}
+  labels:
+    {{- include "unifi-network-application.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "unifi-network-application.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "unifi-network-application.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: unifi-network-application
+          image: {{ include "unifi-network-application.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            {{- range (include "unifi-network-application.ports" . | fromJsonArray) }}
+            - name: {{ .name }}
+              containerPort: {{ .containerPort }}
+              protocol: {{ .protocol }}
+            {{- end }}
+          env:
+            {{- range $name := list "TZ" "PUID" "PGID" }}
+            - name: {{ $name }}
+              value: {{ index $.Values.env $name | quote }}
+            {{- end }}
+            - name: MEM_STARTUP
+              value: {{ .Values.java.initialHeapMiB | quote }}
+            - name: MEM_LIMIT
+              value: {{ .Values.java.maxHeapMiB | quote }}
+            - name: MONGO_HOST
+              value: {{ .Values.externalDatabase.host | quote }}
+            - name: MONGO_PORT
+              value: {{ .Values.externalDatabase.port | quote }}
+            - name: MONGO_DBNAME
+              value: {{ .Values.externalDatabase.database | quote }}
+            - name: MONGO_AUTHSOURCE
+              value: {{ .Values.externalDatabase.authSource | quote }}
+            - name: MONGO_TLS
+              value: {{ .Values.externalDatabase.tls | quote }}
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalDatabase.existingSecret }}
+                  key: {{ .Values.externalDatabase.usernameKey }}
+            - name: MONGO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalDatabase.existingSecret }}
+                  key: {{ .Values.externalDatabase.passwordKey }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          {{- range $name := list "startup" "readiness" "liveness" }}
+          {{ $name }}Probe:
+            httpGet:
+              scheme: HTTPS
+              path: /status
+              port: https
+            {{- toYaml (index $.Values.probes $name) | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (include "unifi-network-application.fullname" .) .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

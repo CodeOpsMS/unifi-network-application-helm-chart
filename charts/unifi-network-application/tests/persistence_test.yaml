@@ -1,0 +1,49 @@
+suite: Persistent data ownership
+templates:
+  - pvc.yaml
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: retains a 5Gi RWO volume by default
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+      - equal:
+          path: spec.accessModes
+          value:
+            - ReadWriteOnce
+      - equal:
+          path: spec.resources.requests.storage
+          value: 5Gi
+      - notExists:
+          path: spec.storageClassName
+  - it: delegates lifecycle for an existing claim
+    set:
+      persistence.existingClaim: existing-config
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: allows an explicit storage class without relying on cluster defaults
+    set:
+      persistence.storageClass: harvester
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: harvester
+  - it: permits static volumes with no storage class
+    set:
+      persistence.storageClass: "-"
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: ""
+  - it: creates no claim for an explicitly disposable test
+    set:
+      persistence.enabled: false
+      persistence.testOnlyEphemeral: true
+    asserts:
+      - hasDocuments:
+          count: 0

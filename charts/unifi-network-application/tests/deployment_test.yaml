@@ -1,0 +1,92 @@
+suite: Controller safety and external database contract
+templates:
+  - deployment.yaml
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: runs one controller and recreates it for RWO storage
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 1
+      - notExists:
+          path: spec.template.spec.initContainers
+  - it: does not automatically mount Kubernetes credentials
+    asserts:
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+  - it: retains the LinuxServer initialization model
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: false
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: false
+  - it: injects database credentials exclusively through Secret references
+    set:
+      externalDatabase.existingSecret: custom-db
+      externalDatabase.usernameKey: user
+      externalDatabase.passwordKey: pass
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGO_USER
+            valueFrom:
+              secretKeyRef:
+                name: custom-db
+                key: user
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MONGO_PASS
+            valueFrom:
+              secretKeyRef:
+                name: custom-db
+                key: pass
+  - it: permits a separate additional Secret reference
+    set:
+      extraEnv:
+        - name: EXTRA_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: application-extra
+              key: token
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: EXTRA_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: application-extra
+                key: token
+  - it: mounts only the existing config claim when selected
+    set:
+      persistence.existingClaim: restored-config
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: restored-config
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /config
+  - it: maps a pinned image digest into the exact container reference
+    set:
+      image.repository: example.invalid/unifi
+      image.tag: test
+      image.digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.invalid/unifi:test@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

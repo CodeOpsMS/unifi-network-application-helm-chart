@@ -1,0 +1,43 @@
+name: Lint and test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Helm ${{ matrix.helm-major }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        helm-major: ['3', '4']
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Bootstrap pinned tools
+        run: make bootstrap
+      - name: Lint, unit tests, render matrix and Kubernetes schemas
+        env:
+          HELM_MAJORS: ${{ matrix.helm-major }}
+        run: make validate
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: validation-helm${{ matrix.helm-major }}
+          path: build/validation/
+          if-no-files-found: error
+          retention-days: 30

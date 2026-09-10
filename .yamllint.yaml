@@ -1,0 +1,14 @@
+extends: default
+ignore: |
+  .tools/
+  .artifacts/
+  build/
+  charts/*/templates/
+rules:
+  document-start: disable
+  line-length: disable
+  truthy:
+    allowed-values: ['true', 'false']
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1

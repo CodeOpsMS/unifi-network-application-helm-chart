@@ -1,0 +1,75 @@
+suite: Java memory headroom and startup budget
+templates:
+  - deployment.yaml
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: reserves native memory above the maximum Java heap
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MEM_STARTUP
+            value: "512"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MEM_LIMIT
+            value: "1024"
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 1536Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 2Gi
+  - it: checks the HTTPS status endpoint for startup
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe
+          value:
+            httpGet:
+              scheme: HTTPS
+              path: /status
+              port: https
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 90
+            successThreshold: 1
+  - it: allows operators to tune slow database and startup timing
+    set:
+      probes.startup.failureThreshold: 120
+      probes.readiness.timeoutSeconds: 8
+      probes.liveness.periodSeconds: 60
+      terminationGracePeriodSeconds: 120
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 120
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.timeoutSeconds
+          value: 8
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.periodSeconds
+          value: 60
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 120
+  - it: rejects a heap exceeding its container headroom
+    set:
+      resources.limits.memory: 1Gi
+    asserts:
+      - failedTemplate:
+          errorMessage: resources.limits.memory must allow at least 512 MiB above java.maxHeapMiB
+  - it: rejects a startup heap above the maximum
+    set:
+      java.initialHeapMiB: 2048
+    asserts:
+      - failedTemplate:
+          errorMessage: java.initialHeapMiB must not exceed java.maxHeapMiB
+  - it: rejects memory requests above the limit
+    set:
+      resources.requests.memory: 3Gi
+    asserts:
+      - failedTemplate:
+          errorMessage: resources.requests.memory must not exceed resources.limits.memory

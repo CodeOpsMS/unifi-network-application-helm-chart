@@ -1,0 +1,9 @@
+chart-dirs:
+  - charts
+charts:
+  - charts/unifi-network-application
+check-version-increment: false
+validate-maintainers: false
+chart-yaml-schema: .tools/ct/etc/chart_schema.yaml
+lint-conf: .yamllint.yaml
+helm-lint-extra-args: --strict

@@ -1,0 +1,32 @@
+suite: TLS ends at the proxy with an HTTPS UniFi backend
+templates:
+  - ingress.yaml
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: is disabled by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: uses the selected certificate and HTTPS upstream
+    set:
+      ingress.enabled: true
+      ingress.className: nginx
+      ingress.host: unifi.example.invalid
+      ingress.tlsSecretName: unifi-tls
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.tls
+          value:
+            - hosts:
+                - unifi.example.invalid
+              secretName: unifi-tls
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/backend-protocol"]
+          value: HTTPS
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/proxy-ssl-verify"]
+          value: "off"

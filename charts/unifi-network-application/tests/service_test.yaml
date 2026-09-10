@@ -1,0 +1,78 @@
+suite: Controller-only service and optional application ports
+templates:
+  - service.yaml
+values:
+  - ../ci/default-values.yaml
+tests:
+  - it: exposes the four required ports through ClusterIP by default
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.selector["app.kubernetes.io/component"]
+          value: controller
+      - lengthEqual:
+          path: spec.ports
+          count: 4
+      - contains:
+          path: spec.ports
+          content:
+            name: https
+            port: 8443
+            targetPort: https
+            protocol: TCP
+      - contains:
+          path: spec.ports
+          content:
+            name: stun
+            port: 3478
+            targetPort: stun
+            protocol: UDP
+  - it: exposes optional portal speedtest and syslog ports only when selected
+    set:
+      service.portal.enabled: true
+      service.speedtest.enabled: true
+      service.syslog.enabled: true
+    asserts:
+      - lengthEqual:
+          path: spec.ports
+          count: 8
+      - contains:
+          path: spec.ports
+          content:
+            name: syslog
+            port: 5514
+            targetPort: syslog
+            protocol: UDP
+  - it: supports an externally reachable NodePort for a separate reverse proxy
+    set:
+      service.type: NodePort
+      service.ports.https.nodePort: 30443
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+      - contains:
+          path: spec.ports
+          content:
+            name: https
+            port: 8443
+            targetPort: https
+            protocol: TCP
+            nodePort: 30443
+  - it: keeps provider annotations and load balancer access settings
+    set:
+      service.type: LoadBalancer
+      service.annotations:
+        example.invalid/provider: external
+      service.loadBalancerSourceRanges:
+        - 192.0.2.0/24
+    asserts:
+      - equal:
+          path: metadata.annotations["example.invalid/provider"]
+          value: external
+      - equal:
+          path: spec.loadBalancerSourceRanges
+          value:
+            - 192.0.2.0/24
