@@ -10,6 +10,14 @@ source .tools/env.sh
 mkdir -p build/validation
 # A failed rerun must never leave a previous success report available to release.
 rm -f build/validation/validation.json
+python3 - <<'PY'
+import json
+from pathlib import Path
+import sys
+sys.path.insert(0, 'scripts')
+from source_state import capture_source
+Path('build/validation/source-state.json').write_text(json.dumps(capture_source()))
+PY
 
 yamllint --strict --config-file .yamllint.yaml .
 while IFS= read -r -d '' script; do
@@ -41,6 +49,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 python3 scripts/validate-persistence.py
+python3 scripts/validate-evidence.py
 
 for major in ${HELM_MAJORS:-3 4}; do
   [[ "$major" == 3 || "$major" == 4 ]]
@@ -61,16 +70,20 @@ python3 - <<'PY'
 import json
 import os
 from pathlib import Path
-import subprocess
+import sys
+sys.path.insert(0, 'scripts')
+from source_state import assert_unchanged
+state = json.loads(Path('build/validation/source-state.json').read_text())
+assert_unchanged(state)
 majors = os.environ.get("HELM_MAJORS", "3 4").split()
 reports = [json.loads(Path(f"build/validation/helm{major}/summary.json").read_text()) for major in majors]
 version = lambda report: report["helm"].lstrip("v").split("+", 1)[0]
-summary = {"passed": True, "sourceCommit": subprocess.run(["git", "rev-parse", "HEAD"], text=True,
-           capture_output=True).stdout.strip(), "helmVersions": [version(report) for report in reports],
+summary = {"passed": True, "sourceCommit": state['commit'], "sourceState": state,
+           "helmVersions": [version(report) for report in reports],
            "checks": {"yamlLint": True, "jsonSchema": True, "pythonSyntax": True,
                       "shellcheck": True, "bashSyntax": True, "shfmt": True, "actionlint": True,
                       "gitDiffCheck": True, "chartTesting": True, "helmLint": True, "helmUnitTests": True,
-                      "javaPropertiesBehavior": True},
+                      "javaPropertiesBehavior": True, "evidenceBehavior": True},
            "matrix": reports}
 Path("build/validation/validation.json").write_text(json.dumps(summary, indent=2) + "\n")
 PY

@@ -28,6 +28,7 @@ SOURCE = Path(__file__).resolve().with_name("suseai-smoke.py")
 SPEC = importlib.util.spec_from_file_location("unifi_smoke", SOURCE)
 SMOKE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SMOKE)
+from release import package_source_commit
 REQUIRED_UI_CHECKS = {
     "initial-setup", "local-login", "dashboard", "devices-empty", "clients-empty", "wifi-settings",
     "network-settings", "local-admin", "controller-name-save", "logout-login", "post-restart-ui",
@@ -72,8 +73,6 @@ class PostSetupUI(SMOKE.Smoke):
         self.last_forward_attempt = 0.0
         self.report["testPurpose"] = "post-setup-browser-review"
         self.report["suite"] = "post-setup-ui"
-        self.report["packageRelease"] = "1.0.0"
-        self.report["packageSourceCommit"] = self.run(["git", "rev-parse", "1.0.0^{commit}"])
         self.report["testScriptSha256"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
     def run(self, cmd, data=None, check=True, timeout=1000):
@@ -112,6 +111,12 @@ class PostSetupUI(SMOKE.Smoke):
     def maintain_ui_forward(self):
         if self.ui_forward is not None and self.ui_forward.poll() is None:
             return
+        if self.ui_forward is not None:
+            for process, log in list(self.forwards):
+                if process is self.ui_forward:
+                    log.close()
+                    self.forwards.remove((process, log))
+            self.ui_forward = None
         if time.monotonic() - self.last_forward_attempt < 1:
             return
         self.last_forward_attempt = time.monotonic()
@@ -126,6 +131,7 @@ class PostSetupUI(SMOKE.Smoke):
         if not self.admin_credentials:
             raise RuntimeError("The completed wizard did not provide local test credentials")
         private_json(self.credentials_file, self.admin_credentials)
+        self.local_admin = dict(self.admin_credentials)
         self.admin_credentials = None
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
@@ -171,6 +177,9 @@ class PostSetupUI(SMOKE.Smoke):
         error = None
         try:
             self.reserve_ready()
+            meta, source_commit = package_source_commit(self.package)
+            self.report["packageRelease"] = str(meta["version"])
+            self.report["packageSourceCommit"] = source_commit
             self.preflight()
             self.mongo()
             self.install()
@@ -188,6 +197,7 @@ class PostSetupUI(SMOKE.Smoke):
             self.persisted(self.baseline_hashes, self.baseline_volumes)
             self.mongo_eval("if(db.getSiblingDB('unifi').device.countDocuments({})!==0) throw Error('Unexpected adopted devices');")
             self.pass_check("post-browser-configuration-site-and-volume-persistence")
+            SMOKE.assert_unchanged(self.source_state, require_clean=True)
             self.report["passed"] = True
         except BaseException as exc:
             error = exc
@@ -210,6 +220,12 @@ class PostSetupUI(SMOKE.Smoke):
                     self.report["passed"] = False
                 finally:
                     shutil.rmtree(self.private)
+            try:
+                SMOKE.assert_unchanged(self.source_state, require_clean=True)
+            except RuntimeError as exc:
+                error = error or exc
+                self.report["sourceError"] = str(exc)
+                self.report["passed"] = False
             self.write("summary.json", self.report)
         return 1 if error else int(not (self.report["passed"] and self.report["cleanupPassed"]))
 

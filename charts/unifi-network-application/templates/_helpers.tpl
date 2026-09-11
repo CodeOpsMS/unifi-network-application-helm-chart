@@ -59,7 +59,20 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- if hasSuffix "Gi" . -}}{{ mul $number 1024 }}{{- else -}}{{ $number }}{{- end -}}
 {{- end -}}
 
+{{/* Compare CPU quantities in millicores, including numeric YAML values. */}}
+{{- define "unifi-network-application.cpuMilli" -}}
+{{- $quantity := toString . -}}
+{{- if hasSuffix "m" $quantity -}}
+{{- trimSuffix "m" $quantity -}}
+{{- else -}}
+{{- round (mulf (float64 $quantity) 1000) 0 -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "unifi-network-application.validate" -}}
+{{- if not (regexMatch "^[a-z]([-a-z0-9]*[a-z0-9])?$" (include "unifi-network-application.fullname" .)) -}}
+{{- fail "the generated Service name must start with a letter; set fullnameOverride or use a release name starting with a letter" -}}
+{{- end -}}
 {{- if not .Values.externalDatabase.host -}}{{ fail "externalDatabase.host is required; provision MongoDB separately" }}{{- end -}}
 {{- if not .Values.externalDatabase.existingSecret -}}{{ fail "externalDatabase.existingSecret is required; create the credentials Secret separately" }}{{- end -}}
 {{- if ne (int .Values.replicaCount) 1 -}}{{ fail "replicaCount must be 1; UniFi does not support chart-managed replicas" }}{{- end -}}
@@ -72,6 +85,9 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- fail "resources.limits.memory must allow at least 512 MiB above java.maxHeapMiB" -}}
 {{- end -}}
 {{- if gt $request $limit -}}{{ fail "resources.requests.memory must not exceed resources.limits.memory" }}{{- end -}}
+{{- $cpuLimit := include "unifi-network-application.cpuMilli" .Values.resources.limits.cpu | float64 -}}
+{{- $cpuRequest := include "unifi-network-application.cpuMilli" .Values.resources.requests.cpu | float64 -}}
+{{- if gt $cpuRequest $cpuLimit -}}{{ fail "resources.requests.cpu must not exceed resources.limits.cpu" }}{{- end -}}
 {{- if and (not .Values.persistence.enabled) (not .Values.persistence.testOnlyEphemeral) -}}
 {{- fail "persistence.enabled=false requires persistence.testOnlyEphemeral=true" -}}
 {{- end -}}
@@ -96,7 +112,7 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | 
 {{- $_ := set $servicePorts $key true -}}
 {{- if .nodePort -}}
 {{- if eq $.Values.service.type "ClusterIP" -}}{{ fail "service nodePort values require type NodePort or LoadBalancer" }}{{- end -}}
-{{- $nodeKey := printf "%v" .nodePort -}}
+{{- $nodeKey := printf "%s/%v" .protocol .nodePort -}}
 {{- if hasKey $nodePorts $nodeKey -}}{{ fail (printf "service contains duplicate nodePort %s" $nodeKey) }}{{- end -}}
 {{- $_ := set $nodePorts $nodeKey true -}}
 {{- end -}}

@@ -2,7 +2,7 @@
 
 Deploy one persistent UniFi Network Application instance on Kubernetes with the LinuxServer image and an existing MongoDB server. The chart manages the application, its Service, an optional `/config` PVC, and an optional TLS Ingress. MongoDB is operated separately.
 
-Maintained by [CodeOpsMS](https://github.com/CodeOpsMS). This is a community chart, not a Ubiquiti or LinuxServer product. Chart version **1.0.0** targets UniFi Network Application **10.6.101** using `lscr.io/linuxserver/unifi-network-application:10.6.101-ls145` with the digest in the chart values. UniFi Network Server and UniFi OS Server are different products; this chart packages the Network Application container.
+Maintained by [CodeOpsMS](https://github.com/CodeOpsMS). This is a community chart, not a Ubiquiti or LinuxServer product. Development chart version **1.0.1** (unreleased) targets UniFi Network Application **10.6.101** using `lscr.io/linuxserver/unifi-network-application:10.6.101-ls145` with the digest in the chart values. UniFi Network Server and UniFi OS Server are different products; this chart packages the Network Application container.
 
 ## Install
 
@@ -45,6 +45,8 @@ helm upgrade --install unifi \
 
 Repository source: [CodeOpsMS/unifi-network-application-helm-chart](https://github.com/CodeOpsMS/unifi-network-application-helm-chart). Release channels are populated by the release workflow; an unreleased checkout is installed locally with `helm upgrade --install unifi ./charts/unifi-network-application ...`.
 
+The published installation examples above use release 1.0.0. To test the unreleased 1.0.1 fixes, package this checkout and install that local archive.
+
 ## Configuration
 
 See [values.yaml](charts/unifi-network-application/values.yaml) for every option and [values.schema.json](charts/unifi-network-application/values.schema.json) for validation. Required values deliberately have no working default.
@@ -73,6 +75,8 @@ See [values.yaml](charts/unifi-network-application/values.yaml) for every option
 | `ingress.host` / `tlsSecretName` | empty | Required when Ingress is enabled |
 
 The Deployment uses **one replica and `Recreate`**. This is not an active/active controller deployment. Startup, readiness, and liveness probes are configurable; each reads HTTPS 8443 `/status` and requires the JSON field `meta.up` to be `true`. UniFi can return HTTP 200 while it is still starting, so the probes check application state as well as successful HTTP access. The default startup allowance is about 15 minutes. Persistent storage is required by default; `persistence.enabled: false` additionally requires `persistence.testOnlyEphemeral: true` and is only for disposable tests.
+
+CPU and memory requests must not exceed the respective limits. Local health probes bypass proxy environment variables.
 
 The LinuxServer image initializes as root and then runs the application under PUID/PGID. The chart preserves that startup contract. Do not add an arbitrary `runAsNonRoot` or read-only root filesystem policy without testing a compatible image. Storage must support the image's ownership initialization; restricted Pod Security policies may reject this deployment.
 
@@ -116,19 +120,19 @@ make validate
 make package
 ```
 
-The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging writes `build/packages/unifi-network-application-1.0.0.tgz`. Run the separate integration procedure against those exact bytes when runtime verification is needed:
+The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging writes `build/packages/unifi-network-application-1.0.1.tgz`. The static report records the source commit, working-tree fingerprint, and whether the source is clean. Development checks may run with uncommitted edits, but release verification rejects such evidence. Run the separate integration procedure against those exact bytes from a clean committed source when runtime verification is needed:
 
 ```sh
 source .tools/env.sh
 python3 scripts/integration/suseai-smoke.py \
-  --package build/packages/unifi-network-application-1.0.0.tgz \
+  --package build/packages/unifi-network-application-1.0.1.tgz \
   --context suseai --worker laemk8saiworker2 --storage-class harvester \
   --evidence build/integration
 ```
 
 The equivalent wrapper is `make smoke SMOKE_ARGS='--context suseai --worker laemk8saiworker2 --storage-class harvester --evidence build/integration'`. Override `PACKAGE=...` when testing a different archive. The wrapper loads the pinned tools from `make bootstrap`.
 
-Read the script and select the intended cluster before running it: unlike rendering or an API dry-run, it creates temporary cluster resources. Test results apply to the versions and environment recorded by that run. CI status does not establish successful production migration, device reachability from every VLAN, or database recovery.
+Read the script and select the intended cluster before running it: unlike rendering or an API dry-run, it creates temporary cluster resources. Test results apply to the versions and environment recorded by that run. The runner installs a private copy of the archive, verifies local administrator login with fresh sessions after setup and restarts, and rejects source changes before accepting its result. CI status does not establish successful production migration, device reachability from every VLAN, or database recovery.
 
 Release publication requires the final source commit, the exact tested `.tgz`, the successful integration `summary.json` including cleanup, and the static `validation.json`. These files are uploaded to a draft release; a manual dispatch of [release.yml](.github/workflows/release.yml) invokes [scripts/release.py](scripts/release.py) to check their agreement and publish the supplied archive to OCI and the Helm repository **without rebuilding it**. The maintainer procedure is in [CONTRIBUTING.md](CONTRIBUTING.md#release-procedure).
 

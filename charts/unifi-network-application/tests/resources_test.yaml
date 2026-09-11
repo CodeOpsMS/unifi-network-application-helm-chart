@@ -1,4 +1,6 @@
 suite: Java memory headroom and startup budget
+release:
+  name: validation
 templates:
   - deployment.yaml
 values:
@@ -82,3 +84,36 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: resources.requests.memory must not exceed resources.limits.memory
+  - it: accepts equal CPU expressed in cores and millicores
+    set:
+      resources.requests.cpu: 1500m
+      resources.limits.cpu: "1.5"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 1500m
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: "1.5"
+  - it: accepts numeric CPU without a floating point rounding rejection
+    set:
+      resources.requests.cpu: 0.3
+      resources.limits.cpu: 300m
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 0.3
+  - it: rejects CPU requests above the limit
+    set:
+      resources.requests.cpu: "3"
+      resources.limits.cpu: "2"
+    asserts:
+      - failedTemplate:
+          errorMessage: resources.requests.cpu must not exceed resources.limits.cpu
+  - it: rejects a CPU request one millicore above a fractional core limit
+    set:
+      resources.requests.cpu: 501m
+      resources.limits.cpu: 0.5
+    asserts:
+      - failedTemplate:
+          errorMessage: resources.requests.cpu must not exceed resources.limits.cpu

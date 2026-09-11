@@ -1,4 +1,6 @@
 suite: TLS ends at the proxy with an HTTPS UniFi backend
+release:
+  name: validation
 templates:
   - ingress.yaml
 values:
