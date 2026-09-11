@@ -3,6 +3,45 @@ entries:
   unifi-network-application:
   - annotations:
       artifacthub.io/changes: |
+        - kind: fixed
+          description: Reject CPU requests above limits and invalid generated Service names.
+        - kind: fixed
+          description: Keep local health probes independent of proxy settings and allow shared TCP/UDP NodePort numbers.
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/images: |
+        - name: unifi-network-application
+          image: lscr.io/linuxserver/unifi-network-application:10.6.101-ls145@sha256:ccadcad5c640c91388d79e66a3751e4de3c9accdcef181f76c142aeca612214d
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Chart source
+          url: https://github.com/CodeOpsMS/unifi-network-application-helm-chart
+        - name: Image documentation
+          url: https://docs.linuxserver.io/images/docker-unifi-network-application/
+    apiVersion: v2
+    appVersion: 10.6.101
+    created: "2026-09-11T06:26:33.431061089Z"
+    description: UniFi Network Application with an externally managed MongoDB and
+      persistent configuration.
+    digest: cd11bd6f813c1324a41a8a37adc29531660523fc1fed6261674d195e2d14dcdb
+    home: https://github.com/CodeOpsMS/unifi-network-application-helm-chart
+    keywords:
+    - unifi
+    - ubiquiti
+    - network
+    kubeVersion: '>=1.25.0-0'
+    maintainers:
+    - name: CodeOpsMS
+      url: https://github.com/CodeOpsMS
+    name: unifi-network-application
+    sources:
+    - https://github.com/CodeOpsMS/unifi-network-application-helm-chart
+    - https://github.com/linuxserver/docker-unifi-network-application
+    type: application
+    urls:
+    - https://codeopsms.github.io/unifi-network-application-helm-chart/unifi-network-application-1.0.1.tgz
+    version: 1.0.1
+  - annotations:
+      artifacthub.io/changes: |
         - kind: added
           description: Initial release with external MongoDB, existing Secrets, persistent storage, and optional HTTPS Ingress.
       artifacthub.io/containsSecurityUpdates: "false"
@@ -17,7 +56,7 @@ entries:
           url: https://docs.linuxserver.io/images/docker-unifi-network-application/
     apiVersion: v2
     appVersion: 10.6.101
-    created: "2026-09-10T17:10:38.585094451Z"
+    created: "2026-09-11T06:26:33.430257816Z"
     description: UniFi Network Application with an externally managed MongoDB and
       persistent configuration.
     digest: c1fd8821d56930485095041e5ecec4ae16c3c7b0f9d8ca9d6b2d536b970bf5e4
@@ -38,4 +77,4 @@ entries:
     urls:
     - https://codeopsms.github.io/unifi-network-application-helm-chart/unifi-network-application-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-10T17:10:38.584179752Z"
+generated: "2026-09-11T06:26:33.429332404Z"
