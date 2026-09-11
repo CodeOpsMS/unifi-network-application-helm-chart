@@ -1,4 +1,6 @@
 suite: Controller safety and external database contract
+release:
+  name: validation
 templates:
   - deployment.yaml
 values:

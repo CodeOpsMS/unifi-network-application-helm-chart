@@ -3,7 +3,7 @@ apiVersion: v2
 name: unifi-network-application
 description: UniFi Network Application with an externally managed MongoDB and persistent configuration.
 type: application
-version: 1.0.0
+version: 1.0.1
 appVersion: "10.6.101"
 kubeVersion: ">=1.25.0-0"
 home: https://github.com/CodeOpsMS/unifi-network-application-helm-chart
@@ -21,8 +21,10 @@ annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
-    - kind: added
-      description: Initial release with external MongoDB, existing Secrets, persistent storage, and optional HTTPS Ingress.
+    - kind: fixed
+      description: Reject CPU requests above limits and invalid generated Service names.
+    - kind: fixed
+      description: Keep local health probes independent of proxy settings and allow shared TCP/UDP NodePort numbers.
   artifacthub.io/images: |
     - name: unifi-network-application
       image: lscr.io/linuxserver/unifi-network-application:10.6.101-ls145@sha256:ccadcad5c640c91388d79e66a3751e4de3c9accdcef181f76c142aeca612214d

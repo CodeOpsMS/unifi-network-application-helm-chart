@@ -3,6 +3,7 @@
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,8 @@ import tempfile
 
 import yaml
 
+from source_state import capture_source
+
 REPOSITORY = "CodeOpsMS/unifi-network-application-helm-chart"
 CHART = "unifi-network-application"
 OCI = "oci://ghcr.io/codeopsms/helm-charts"
@@ -22,10 +25,75 @@ REQUIRED = {
     "worker-ready-and-avx", "mongo-authentication-and-special-character-credentials",
     "helm-and-kubernetes-server-dry-runs", "unifi-10.6.101-setup-status-and-runtime-digests",
     "local-setup-completed-without-cloud-or-devices",
+    "local-admin-authentication-and-protected-api",
     "unifi-restart-persistence", "mongo-restart-persistence", "same-version-package-upgrade-persistence",
     "negative-missing-key", "negative-bad-password", "negative-unreachable-db",
     "ingress-host-routing-trusted-test-certificate-and-https-backend",
 }
+STATIC_CHECKS = {
+    "yamlLint", "jsonSchema", "pythonSyntax", "shellcheck", "bashSyntax", "shfmt",
+    "actionlint", "gitDiffCheck", "chartTesting", "helmLint", "helmUnitTests",
+    "javaPropertiesBehavior", "evidenceBehavior",
+}
+HELM_VERSIONS = {"3.21.3", "4.2.4"}
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def package_metadata(package):
+    with tarfile.open(package) as archive:
+        members = [m for m in archive.getmembers() if m.name == CHART + "/Chart.yaml"]
+        require(len(members) == 1 and members[0].isfile(), "Archive must contain one Chart.yaml")
+        meta = yaml.safe_load(archive.extractfile(members[0]).read())
+    require(isinstance(meta, dict) and meta.get("name") == CHART, "Unexpected chart identity")
+    require(re.fullmatch(r"\d+\.\d+\.\d+", str(meta.get("version", ""))), "Invalid chart version")
+    return meta
+
+
+def verify_archive(package, sources):
+    meta = yaml.safe_load(sources[CHART + "/Chart.yaml"])
+    with tarfile.open(package) as archive:
+        members = archive.getmembers()
+        files = [m for m in members if m.isfile()]
+        require(len({m.name for m in files}) == len(files), "Duplicate archive member")
+        require({m.name for m in files} == set(sources), "Archive is missing or adds source files")
+        for member in members:
+            relative = Path(member.name)
+            require(not relative.is_absolute() and relative.parts[0] == CHART and ".." not in relative.parts,
+                    "Unsafe archive member")
+            if member.isdir():
+                continue
+            require(member.isfile(), "Unexpected archive member")
+            data = archive.extractfile(member).read()
+            if member.name == CHART + "/Chart.yaml":
+                require(yaml.safe_load(data) == meta, "Archive chart metadata differs from source")
+            else:
+                require(data == sources[member.name], "Archive/source mismatch: " + member.name)
+
+
+def chart_sources(ref=None):
+    prefix = "charts/" + CHART + "/"
+    if ref:
+        names = run(["git", "ls-tree", "-r", "--name-only", ref, "--", prefix]).splitlines()
+        read = lambda name: subprocess.check_output(["git", "show", ref + ":" + name])
+    else:
+        names = [str(p) for p in Path(prefix).rglob("*") if p.is_file()]
+        read = lambda name: Path(name).read_bytes()
+    return {name.removeprefix("charts/"): read(name) for name in names
+            if not any(part in {"tests", "ci"} for part in Path(name).relative_to("charts").parts)}
+
+
+def package_source_commit(package):
+    """Attribute a browser fixture only after verifying its bytes against source."""
+    meta = package_metadata(package)
+    tag = subprocess.run(["git", "rev-parse", "--verify", "refs/tags/" + str(meta["version"]) + "^{commit}"],
+                         text=True, capture_output=True, check=False)
+    ref = tag.stdout.strip() if tag.returncode == 0 else None
+    verify_archive(package, chart_sources(ref))
+    return meta, ref or capture_source()["commit"]
 
 
 def run(cmd, **kwargs):
@@ -35,44 +103,60 @@ def run(cmd, **kwargs):
 def verify(package, summary, validation):
     digest = hashlib.sha256(package.read_bytes()).hexdigest()
     report = json.loads(summary.read_text())
-    assert report["passed"] and report["cleanupPassed"], "Integration/cleanup did not pass"
-    assert report["packageSha256"] == digest, "Package differs from tested bytes"
-    assert REQUIRED <= {c["name"] for c in report["checks"] if c["passed"]}, "Required integration evidence missing"
-    assert report["sourceCommit"] == run(["git", "rev-parse", "HEAD"]), "Checkout is not tested commit"
-    assert not run(["git", "status", "--porcelain", "--untracked-files=no"]), "Tracked source is dirty"
+    require(report.get("passed") is True and report.get("cleanupPassed") is True, "Integration/cleanup did not pass")
+    require(report.get("packageSha256") == digest, "Package differs from tested bytes")
+    checks = report.get("checks")
+    require(isinstance(checks, list) and all(isinstance(c, dict) and isinstance(c.get("name"), str)
+            and c.get("passed") is True for c in checks), "Invalid integration check results")
+    names = [c["name"] for c in checks]
+    require(len(names) == len(set(names)) and REQUIRED <= set(names), "Required integration evidence missing")
+    state = capture_source()
+    require(state["clean"] is True, "Tracked or untracked source is dirty")
+    require(report.get("sourceCommit") == state["commit"] and report.get("sourceState") == state,
+            "Integration evidence does not identify this clean source")
     lint = json.loads(validation.read_text())
-    assert lint["passed"], "Static validation did not pass"
-    assert lint["sourceCommit"] == report["sourceCommit"], "Static checks tested another commit"
-    assert {"3.21.3", "4.2.4"} <= set(lint["helmVersions"]), "Helm compatibility evidence missing"
-    meta = yaml.safe_load(Path(f"charts/{CHART}/Chart.yaml").read_text())
-    assert package.name == f"{CHART}-{meta['version']}.tgz"
-    assert re.fullmatch(r"\d+\.\d+\.\d+", str(meta["version"]))
-    # Helm normalizes Chart.yaml; every other packaged source file must match.
-    with tarfile.open(package) as archive:
-        expected = {str(Path(CHART) / p.relative_to(Path("charts") / CHART))
-                    for p in (Path("charts") / CHART).rglob("*")
-                    if p.is_file() and not any(part in {"tests", "ci"} for part in p.relative_to(Path("charts") / CHART).parts)}
-        assert {m.name for m in archive.getmembers() if m.isfile()} == expected, "Archive is missing or adds source files"
-        for member in archive.getmembers():
-            if member.isdir():
-                continue
-            assert member.isfile(), "Unexpected archive member"
-            relative = Path(member.name)
-            assert relative.parts[0] == CHART and ".." not in relative.parts
-            source = Path("charts") / relative
-            data = archive.extractfile(member).read()
-            if relative.name == "Chart.yaml":
-                assert yaml.safe_load(data) == meta
-            else:
-                assert source.is_file() and source.read_bytes() == data, f"Archive/source mismatch: {source}"
+    require(lint.get("passed") is True, "Static validation did not pass")
+    require(lint.get("sourceCommit") == state["commit"] and lint.get("sourceState") == state,
+            "Static evidence does not identify this clean source")
+    require(set(lint.get("helmVersions", [])) == HELM_VERSIONS, "Helm compatibility evidence missing")
+    require(isinstance(lint.get("checks"), dict) and all(lint["checks"].get(name) is True for name in STATIC_CHECKS),
+            "Static checks are missing or failed")
+    spec = importlib.util.spec_from_file_location("chart_validation", Path(__file__).with_name("validate-chart.py"))
+    validator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validator)
+    matrix = lint.get("matrix")
+    require(isinstance(matrix, list) and len(matrix) == 2, "Both Helm matrices are required")
+    versions = set()
+    for entry in matrix:
+        require(isinstance(entry, dict) and entry.get("result") == "pass", "A Helm matrix failed")
+        version = entry.get("helm", "").lstrip("v").split("+", 1)[0]
+        require(version not in versions and version in HELM_VERSIONS, "Unexpected or duplicate Helm matrix")
+        versions.add(version)
+        require(set(validator.POSITIVE) <= set(entry.get("positive", [])), "Positive render evidence missing")
+        require({"empty-defaults", *validator.NEGATIVE} <= set(entry.get("negative", [])), "Negative render evidence missing")
+        require(type(entry.get("healthProbeBehaviorCases")) is int and entry["healthProbeBehaviorCases"] >= 90,
+                "Health probe behavior evidence missing")
+        require({"1.25.16", "1.34.6"} <= set(entry.get("kubernetesSchemaVersions", [])), "Kubernetes schema evidence missing")
+        require(entry.get("schemaRevision") == validator.SCHEMA_COMMIT, "Unexpected Kubernetes schema revision")
+        schemas = entry.get("schemaCases", {})
+        require(isinstance(schemas, dict) and set(validator.POSITIVE) <= set(schemas.get("1.34.6", []))
+                and {"default", "custom-routing", "static-pvc", "existing-pvc", "ephemeral-test"}
+                <= set(schemas.get("1.25.16", [])), "Kubernetes schema case evidence missing")
+        archive = entry.get("package", {})
+        require(isinstance(archive, dict) and archive.get("name") == package.name
+                and re.fullmatch(r"[a-f0-9]{64}", str(archive.get("sha256", ""))), "Static package evidence missing")
+    require(any(entry["package"]["sha256"] == digest for entry in matrix), "Static checks did not test this package")
+    meta = package_metadata(package)
+    require(package.name == f"{CHART}-{meta['version']}.tgz", "Package filename/version mismatch")
+    verify_archive(package, chart_sources())
     return str(meta["version"]), digest
 
 
 def publish(package, summary, validation):
     version, digest = verify(package, summary, validation)
     release = json.loads(run(["gh", "release", "view", version, "--repo", REPOSITORY, "--json", "isDraft,targetCommitish"]))
-    assert release["isDraft"], "Published releases are immutable; refusing overwrite"
-    assert run(["git", "rev-parse", f"{version}^{{commit}}"] ) == run(["git", "rev-parse", "HEAD"])
+    require(release["isDraft"] is True, "Published releases are immutable; refusing overwrite")
+    require(run(["git", "rev-parse", f"{version}^{{commit}}"] ) == run(["git", "rev-parse", "HEAD"]), "Release tag is not the tested commit")
     token = os.environ["GH_TOKEN"]
     with tempfile.TemporaryDirectory(prefix="unifi-release-") as tmp:
         tmp = Path(tmp)
@@ -83,12 +167,12 @@ def publish(package, summary, validation):
                                    "--registry-config", str(reg)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
         if existing.returncode:
             # Only absence is safe; an authentication/network failure must not permit overwrite.
-            assert any(s in existing.stderr.lower() for s in ["not found", "404", "name_unknown", "manifest_unknown"]), existing.stderr
+            require(any(s in existing.stderr.lower() for s in ["not found", "404", "name_unknown", "manifest_unknown"]), existing.stderr)
             subprocess.run(["helm", "push", str(package), OCI, "--registry-config", str(reg)], check=True)
         fetched = tmp / "fetched"
         fetched.mkdir()
         subprocess.run(["helm", "pull", OCI + "/" + CHART, "--version", version, "--destination", str(fetched), "--registry-config", str(reg)], check=True)
-        assert hashlib.sha256((fetched / package.name).read_bytes()).hexdigest() == digest
+        require(hashlib.sha256((fetched / package.name).read_bytes()).hexdigest() == digest, "OCI bytes differ from tested package")
         pages = tmp / "pages"
         pages.mkdir()
         remote = "https://github.com/" + REPOSITORY + ".git"
@@ -98,7 +182,7 @@ def publish(package, summary, validation):
             subprocess.run(["git", "-C", str(pages), "fetch", "--depth=1", "origin", "gh-pages"], check=True)
             subprocess.run(["git", "-C", str(pages), "reset", "--hard", "FETCH_HEAD"], check=True)
         if (pages / package.name).exists():
-            assert hashlib.sha256((pages / package.name).read_bytes()).hexdigest() == digest, "Pages version already exists with different bytes; refusing overwrite"
+            require(hashlib.sha256((pages / package.name).read_bytes()).hexdigest() == digest, "Pages version already exists with different bytes; refusing overwrite")
         shutil.copyfile(package, pages / package.name)
         args = ["helm", "repo", "index", str(pages), "--url", PAGES]
         if (pages / "index.yaml").exists():

@@ -1,4 +1,6 @@
 suite: Persistent data ownership
+release:
+  name: validation
 templates:
   - pvc.yaml
 values:

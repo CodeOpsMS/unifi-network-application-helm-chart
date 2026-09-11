@@ -1,4 +1,6 @@
 suite: Controller-only service and optional application ports
+release:
+  name: validation
 templates:
   - service.yaml
 values:

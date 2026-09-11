@@ -25,6 +25,12 @@ from urllib.parse import quote
 
 import javaproperties
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from source_state import assert_unchanged, capture_source
+
+if not __debug__:
+    raise RuntimeError("Integration assertions require Python without -O or PYTHONOPTIMIZE")
+
 MONGO_DIGEST = "sha256:b096b4cb9269f3ebcf363be63f1c50920f786879d03a1890347a3bf33f1f0df0"
 MONGO_AMD64 = "sha256:afef081f9a06e810d1781214234b8c0dab77f9f694567bf24b193b78d445491e"
 MONGO_IMAGE = f"mongo:7.0.41@{MONGO_DIGEST}"
@@ -42,6 +48,8 @@ def property_fingerprint(contents):
 class Smoke:
     def __init__(self, args):
         self.args = args
+        self.source_state = capture_source()
+        package_bytes = Path(args.package).read_bytes()
         self.run_id = time.strftime("%Y%m%d%H%M%S", time.gmtime()) + "-" + secrets.token_hex(3)
         self.ns = "unifi-smoke-" + self.run_id
         self.uid = None
@@ -51,12 +59,16 @@ class Smoke:
         self.out = Path(args.evidence).resolve() / self.run_id
         self.out.mkdir(parents=True, mode=0o700)
         self.private = Path(tempfile.mkdtemp(prefix="unifi-smoke-private-"))
+        self.package = self.private / Path(args.package).name
+        self.package.write_bytes(package_bytes)
+        self.package.chmod(0o400)
+        self.local_admin = None
         self.kube = ["kubectl", "--context", args.context, "--request-timeout=30s"]
         self.helm = [args.helm, "--kube-context", args.context]
         self.report = {"runId": self.run_id, "namespace": self.ns,
                        "package": Path(args.package).name,
-                       "packageSha256": hashlib.sha256(Path(args.package).read_bytes()).hexdigest(),
-                       "sourceCommit": self.run(["git", "rev-parse", "HEAD"], check=False).strip(),
+                       "packageSha256": hashlib.sha256(package_bytes).hexdigest(),
+                       "sourceCommit": self.source_state["commit"], "sourceState": self.source_state,
                        "checks": [], "passed": False, "cleanupPassed": False}
 
     def clean(self, text):
@@ -112,6 +124,7 @@ class Smoke:
                                     "claim": ref["name"]}
 
     def preflight(self):
+        assert_unchanged(self.source_state, require_clean=True)
         self.report["kubernetesVersion"] = json.loads(self.k("get", "--raw=/version"))["gitVersion"]
         node = self.obj("get", "node", self.args.worker)
         assert node["metadata"]["labels"]["kubernetes.io/arch"] == "amd64"
@@ -215,19 +228,19 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
 
     def status(self, check_setup=False):
         port = self.forward("service/unifi", 8443)
-        data = json.loads(self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "20", f"https://127.0.0.1:{port}/status"]))
+        data = json.loads(self.run(["curl", "--noproxy", "*", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "20", f"https://127.0.0.1:{port}/status"]))
         assert data["meta"]["up"] is True, data
         assert data["meta"]["server_version"] == "10.6.101", data
         self.write("status.json", data)
         if not check_setup:
             return
         # Fetch the management document directly; '/' need not return application HTML.
-        html = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "20", f"https://127.0.0.1:{port}/manage"])
+        html = self.run(["curl", "--noproxy", "*", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "20", f"https://127.0.0.1:{port}/manage"])
         self.write("setup-entry.html", html)
         assert "<html" in html.lower() and '<base href="/setup/"' in html and 'id="root"' in html, "Setup HTML bootstrap missing"
         scripts = re.findall(r'<script\b[^>]*src="(/setup/static/js/main\.[^"/]+\.js)"', html)
         assert len(scripts) == 1, "Setup application bundle reference missing"
-        asset_status = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "30",
+        asset_status = self.run(["curl", "--noproxy", "*", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "30",
                                  "--output", os.devnull, "--write-out", "%{http_code}", f"https://127.0.0.1:{port}{scripts[0]}"])
         assert asset_status == "200", "Setup application bundle unavailable"
         self.report["setupAssetStatus"] = 200
@@ -256,7 +269,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                     if cookie.name == "csrf_token":
                         lines.append("X-Csrf-Token: " + cookie.value)
             headers.write_text("\n".join(lines) + "\n")
-            cmd = ["curl", "--silent", "--show-error", "--fail-with-body", "--insecure", "--max-time", "30",
+            cmd = ["curl", "--noproxy", "*", "--silent", "--show-error", "--fail-with-body", "--insecure", "--max-time", "30",
                    "--cookie", str(jar), "--cookie-jar", str(jar), "--header", "@" + str(headers)]
             if payload is not None:
                 cmd += ["--data-binary", "@-"]
@@ -277,12 +290,51 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         api("/api/set/setting/super_mgmt", {"autobackup_enabled": False, "backup_to_cloud_enabled": False})
         api("/api/set/setting/mgmt", {"x_ssh_username": "smokeadmin", "x_ssh_password": ssh_password})
         api("/api/cmd/system", {"cmd": "set-installed"})
-        html = self.run(["curl", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "30",
+        html = self.run(["curl", "--noproxy", "*", "--silent", "--show-error", "--fail", "--insecure", "--location", "--max-time", "30",
                          f"https://127.0.0.1:{port}/manage"])
         assert "<html" in html.lower() and '<base href="/setup/"' not in html, "Controller still serves initial setup"
         self.mongo_eval("if(db.getSiblingDB('unifi').device.countDocuments({})!==0) throw Error('Unexpected adopted devices');")
         self.status()
         self.pass_check("local-setup-completed-without-cloud-or-devices")
+        self.local_admin = {"username": "smokeadmin", "password": password}
+        self.check_local_admin()
+        self.pass_check("local-admin-authentication-and-protected-api")
+
+    def check_local_admin(self):
+        """Use new sessions: reject an invalid password and verify a protected API."""
+        if not self.local_admin:
+            raise RuntimeError("Local administrator credentials are unavailable for authentication test")
+        port = self.forward("service/unifi", 8443)
+        jar = self.private / ("login-" + secrets.token_hex(4) + ".cookies")
+        for valid in [False, True]:
+            jar.unlink(missing_ok=True)
+            password = self.local_admin["password"] if valid else secrets.token_urlsafe(32)
+            self.sensitive.append(password)
+            payload = {"username": self.local_admin["username"], "password": password}
+            response = self.run(["curl", "--noproxy", "*", "--silent", "--show-error", "--insecure", "--max-time", "30",
+                                 "--cookie-jar", str(jar), "--header", "Content-Type: application/json",
+                                 "--data-binary", "@-", "--write-out", "\n%{http_code}",
+                                 f"https://127.0.0.1:{port}/api/login"], data=json.dumps(payload))
+            body, status = response.rsplit("\n", 1)
+            result = json.loads(body)
+            assert status == "200" if valid else status in {"400", "401", "403"}, "Login failed for a reason other than authentication"
+            if not valid:
+                assert re.search(r"invalid|auth|login|credential", result.get("meta", {}).get("msg", ""), re.I), "Negative login lacks an authentication error"
+            assert (result.get("meta", {}).get("rc") == "ok") is valid, "Local login returned an unexpected result"
+            if jar.exists():
+                cookies = http.cookiejar.MozillaCookieJar(str(jar))
+                cookies.load(ignore_discard=True, ignore_expires=True)
+                self.sensitive.extend(cookie.value for cookie in cookies)
+            identity_response = self.run(["curl", "--noproxy", "*", "--silent", "--show-error", "--insecure",
+                                             "--max-time", "30", "--cookie", str(jar), "--write-out", "\n%{http_code}",
+                                             f"https://127.0.0.1:{port}/api/self"])
+            body, status = identity_response.rsplit("\n", 1)
+            identity = json.loads(body)
+            assert status == "200" if valid else status in {"401", "403"}, "Protected API did not enforce session authentication"
+            assert (identity.get("meta", {}).get("rc") == "ok") is valid, "Protected API accepted an invalid session"
+            if valid:
+                assert any(item.get("name") == self.local_admin["username"] for item in identity.get("data", [])), "Authenticated identity differs from local test admin"
+            jar.unlink(missing_ok=True)
 
     def runtime_images(self):
         result = {}
@@ -297,7 +349,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
 
     def install(self):
         vals = self.values()
-        args = ["unifi", str(Path(self.args.package).resolve()), "-n", self.ns, "-f", vals]
+        args = ["unifi", str(self.package), "-n", self.ns, "-f", vals]
         rendered = self.h("template", *args)
         self.write("rendered.yaml", rendered)
         self.write("server-dry-run.log", self.k("create", "--dry-run=server", "--validate=strict", "-n", self.ns, "-f", "-", data=rendered))
@@ -342,6 +394,8 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.record_volumes()
         assert self.volumes == volumes, "PVC/PV identity changed"
         self.status()
+        if self.local_admin:
+            self.check_local_admin()
 
     def persistence(self):
         hashes = self.config_hashes()
@@ -370,7 +424,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                     time.sleep(2)
             self.pass_check(app + "-restart-persistence")
         vals = self.values(podAnnotations={"smoke-upgrade": self.run_id})
-        self.write("upgrade.log", self.h("upgrade", "unifi", str(Path(self.args.package).resolve()), "-n", self.ns, "-f", vals, "--wait", "--timeout=16m", timeout=1020))
+        self.write("upgrade.log", self.h("upgrade", "unifi", str(self.package), "-n", self.ns, "-f", vals, "--wait", "--timeout=16m", timeout=1020))
         self.persisted(hashes, volumes)
         self.pass_check("same-version-package-upgrade-persistence")
 
@@ -386,7 +440,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         for name, db in cases:
             vals = self.values(name=name, externalDatabase=db,
                                probes={"startup": {"failureThreshold": 24, "periodSeconds": 5, "timeoutSeconds": 2}})
-            self.h("install", name, str(Path(self.args.package).resolve()), "-n", self.ns, "-f", vals)
+            self.h("install", name, str(self.package), "-n", self.ns, "-f", vals)
             deadline = time.monotonic() + 300
             observed = None
             while time.monotonic() < deadline:
@@ -428,12 +482,12 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         self.create({"apiVersion": "v1", "kind": "Secret", "type": "kubernetes.io/tls", "metadata": {"name": "ingress-tls"},
                      "data": {"tls.crt": base64.b64encode(cert.read_bytes()).decode(), "tls.key": base64.b64encode(key.read_bytes()).decode()}})
         vals = self.values(ingress={"enabled": True, "className": "nginx", "host": host, "tlsSecretName": "ingress-tls"})
-        self.h("upgrade", "unifi", str(Path(self.args.package).resolve()), "-n", self.ns, "-f", vals, "--wait", "--timeout=16m", timeout=1020)
+        self.h("upgrade", "unifi", str(self.package), "-n", self.ns, "-f", vals, "--wait", "--timeout=16m", timeout=1020)
         selector = "app.kubernetes.io/name=rke2-ingress-nginx,app.kubernetes.io/component=controller"
         pods = self.obj("get", "pods", "-n", "kube-system", "-l", selector)["items"]
         pod = next(p for p in pods if any(c["type"] == "Ready" and c["status"] == "True" for c in p["status"]["conditions"]))
         port = self.forward("pod/" + pod["metadata"]["name"], 443, "kube-system")
-        cmd = ["curl", "--silent", "--show-error", "--fail", "--noproxy", "*", "--max-time", "15", "--cacert", str(cert),
+        cmd = ["curl", "--noproxy", "*", "--silent", "--show-error", "--fail", "--max-time", "15", "--cacert", str(cert),
                "--resolve", f"{host}:{port}:127.0.0.1", f"https://{host}:{port}/status"]
         for attempt in range(30):
             try:
@@ -481,6 +535,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
             self.persistence()
             self.negative_cases()
             self.ingress()
+            assert_unchanged(self.source_state, require_clean=True)
             self.report["passed"] = True
         except BaseException as exc:
             error = exc
@@ -496,6 +551,12 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                 print("CLEANUP FAILED: " + self.clean(str(exc)), file=sys.stderr, flush=True)
             finally:
                 shutil.rmtree(self.private)
+            try:
+                assert_unchanged(self.source_state, require_clean=True)
+            except RuntimeError as exc:
+                error = error or exc
+                self.report["sourceError"] = str(exc)
+                self.report["passed"] = False
             self.write("summary.json", self.report)
         if error:
             return 1

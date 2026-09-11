@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 (unreleased)
+
+- Reject CPU requests above CPU limits, including equivalent millicore and core quantities, and reject generated Service names invalid on supported Kubernetes versions.
+- Keep local health checks direct when proxy environment variables are configured. Allow the same NodePort number for TCP and UDP while rejecting duplicates within one protocol.
+- Expand render, negative-diagnostic, actual probe-command and Kubernetes 1.25/1.34 schema coverage.
+- Bind validation and runtime evidence to the actual committed source and a private immutable test-package copy. Require complete, strictly typed release evidence even under Python optimization.
+- Add offline regressions for release gates, source changes, archive identity and test ownership. Verify local UniFi login and a protected API in fresh sessions after setup, restarts and upgrade.
+- Add an optional disposable browser-review runner with verified package provenance, bounded forwarding and cleanup.
+
 ## 1.0.0
 
 - Initial CodeOpsMS release for the LinuxServer UniFi Network Application image and separately operated MongoDB.
