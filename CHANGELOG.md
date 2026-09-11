@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.1 (unreleased)
+## 1.0.1 — 2026-09-11
 
 - Reject CPU requests above CPU limits, including equivalent millicore and core quantities, and reject generated Service names invalid on supported Kubernetes versions.
 - Keep local health checks direct when proxy environment variables are configured. Allow the same NodePort number for TCP and UDP while rejecting duplicates within one protocol.
