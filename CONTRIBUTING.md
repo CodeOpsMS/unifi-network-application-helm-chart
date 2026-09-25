@@ -14,14 +14,14 @@ Increment the chart version for a new release, document changes in `CHANGELOG.md
 
 Finish and commit the intended source before creating release evidence. The static validation report, integration report, release tag, and publishing checkout must identify the same commit and clean source fingerprint. Static development checks may run with uncommitted changes; those reports are not releasable. Optimized Python execution is rejected for the integration checks. Offline release-gate regression tests also exercise python -O. Do not change tracked files during testing. After any source correction, commit the correction and repeat the relevant release checks with a newly packaged archive.
 
-The commands below illustrate the procedure used for version 1.0.1. For a future release, increment the chart version and substitute that new version throughout; published versions must not be overwritten.
+The commands below prepare version 1.0.2 from this checkout. Publish it only after the required checks pass. For a future release, increment the chart version and substitute that new version throughout; published versions must not be overwritten.
 
 ```sh
 make bootstrap
 make validate
 make package
 make smoke \
-  PACKAGE=build/packages/unifi-network-application-1.0.1.tgz \
+  PACKAGE=build/packages/unifi-network-application-1.0.2.tgz \
   SMOKE_ARGS='--context suseai --worker laemk8saiworker2 --storage-class harvester --evidence build/integration'
 ```
 
@@ -32,23 +32,23 @@ Use the downloaded tool environment and check the release inputs locally, substi
 ```sh
 source .tools/env.sh
 python3 scripts/release.py verify \
-  --package build/packages/unifi-network-application-1.0.1.tgz \
+  --package build/packages/unifi-network-application-1.0.2.tgz \
   --summary build/integration/RUN_ID/summary.json \
   --validation build/validation/validation.json
 ```
 
-Create and push the `1.0.1` tag at that tested commit, then create a **draft** GitHub release for the existing tag. Upload the same archive plus the two reports under these exact asset names:
+Create and push the `1.0.2` tag at that tested commit, then create a **draft** GitHub release for the existing tag. Upload the same archive plus the two reports under these exact asset names:
 
-- `unifi-network-application-1.0.1.tgz`
+- `unifi-network-application-1.0.2.tgz`
 - `summary.json`
 - `validation.json`
 
-Review the draft's notes and assets. Dispatch **Publish tested chart** in GitHub Actions with `version=1.0.1`, or use:
+Review the draft's notes and assets. Dispatch **Publish tested chart** in GitHub Actions with `version=1.0.2`, or use:
 
 ```sh
 gh workflow run release.yml \
   --repo CodeOpsMS/unifi-network-application-helm-chart \
-  --ref main --field version=1.0.1
+  --ref main --field version=1.0.2
 ```
 
 The workflow checks out the version tag and downloads the draft assets. `scripts/release.py` verifies the source commit, successful checks, package hash, and package/source agreement before publishing the supplied package. It does not run `helm package` again. Configure GitHub Pages publishing and repository/package permissions before the first release, and verify the resulting Helm repository and OCI downloads after the publishing workflow completes.
@@ -62,7 +62,7 @@ Use [post-setup-ui.py](scripts/integration/post-setup-ui.py) for an additional i
 ```sh
 source .tools/env.sh
 python3 scripts/integration/post-setup-ui.py \
-  --package build/packages/unifi-network-application-1.0.1.tgz \
+  --package build/packages/unifi-network-application-1.0.2.tgz \
   --context YOUR_CONTEXT --worker YOUR_TEST_WORKER --storage-class YOUR_STORAGE_CLASS \
   --manual-setup --ui-timeout 1800 \
   --evidence build/post-setup-ui \

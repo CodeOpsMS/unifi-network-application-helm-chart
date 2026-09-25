@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 — 2026-09-25 (unreleased)
+
+- Update UniFi Network Application from 10.6.101 to 10.6.106 and the LinuxServer image from `10.6.101-ls145` to `10.6.106-ls147`, pinning its verified AMD64/ARM64 index digest.
+- Include OpenJDK 25 and curl security updates from the image package inventory: [USN-8783-1](https://ubuntu.com/security/notices/USN-8783-1) and [USN-8670-3](https://ubuntu.com/security/notices/USN-8670-3). Mark the chart as containing security updates.
+- Preserve the values API, external MongoDB configuration, persistent storage, ports, probes and Java heap settings; the upstream Dockerfiles and application startup scripts have not changed.
+- Align runtime version/digest assertions and required release evidence with 10.6.106. Add regressions against inconsistent image metadata and evidence from the previous application version.
+- Document upstream changes, image verification and explicit image-pin handling during upgrades in the [10.6.106 review](docs/unifi-10.6.106-review.md).
+
 ## 1.0.1 — 2026-09-11
 
 - Reject CPU requests above CPU limits, including equivalent millicore and core quantities, and reject generated Service names invalid on supported Kubernetes versions.

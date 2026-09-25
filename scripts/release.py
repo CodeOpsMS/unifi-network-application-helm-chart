@@ -23,7 +23,7 @@ OCI = "oci://ghcr.io/codeopsms/helm-charts"
 PAGES = "https://codeopsms.github.io/unifi-network-application-helm-chart"
 REQUIRED = {
     "worker-ready-and-avx", "mongo-authentication-and-special-character-credentials",
-    "helm-and-kubernetes-server-dry-runs", "unifi-10.6.101-setup-status-and-runtime-digests",
+    "helm-and-kubernetes-server-dry-runs", "unifi-10.6.106-setup-status-and-runtime-digests",
     "local-setup-completed-without-cloud-or-devices",
     "local-admin-authentication-and-protected-api",
     "unifi-restart-persistence", "mongo-restart-persistence", "same-version-package-upgrade-persistence",

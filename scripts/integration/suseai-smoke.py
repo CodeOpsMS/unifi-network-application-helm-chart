@@ -34,8 +34,9 @@ if not __debug__:
 MONGO_DIGEST = "sha256:b096b4cb9269f3ebcf363be63f1c50920f786879d03a1890347a3bf33f1f0df0"
 MONGO_AMD64 = "sha256:afef081f9a06e810d1781214234b8c0dab77f9f694567bf24b193b78d445491e"
 MONGO_IMAGE = f"mongo:7.0.41@{MONGO_DIGEST}"
-UNIFI_DIGEST = "sha256:ccadcad5c640c91388d79e66a3751e4de3c9accdcef181f76c142aeca612214d"
-UNIFI_AMD64 = "sha256:03668ea520c69c91344c0f3de8cd953c89989ccfa2fcdb10ef16d509686a57dc"
+UNIFI_VERSION = "10.6.106"
+UNIFI_DIGEST = "sha256:5f5e76c95b5bd4becb0cdb1b96ef53a468e75ca0f7a096ca5c24fc30998b382a"
+UNIFI_AMD64 = "sha256:59b41343c8ef2381181bb10e93c2b4d11501125731ed7ce25b35df46951ac9d2"
 
 
 def property_fingerprint(contents):
@@ -230,7 +231,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         port = self.forward("service/unifi", 8443)
         data = json.loads(self.run(["curl", "--noproxy", "*", "--silent", "--show-error", "--fail", "--insecure", "--max-time", "20", f"https://127.0.0.1:{port}/status"]))
         assert data["meta"]["up"] is True, data
-        assert data["meta"]["server_version"] == "10.6.101", data
+        assert data["meta"]["server_version"] == UNIFI_VERSION, data
         self.write("status.json", data)
         if not check_setup:
             return
@@ -249,7 +250,8 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         """Finish the pinned application's local wizard without adopting devices.
 
         An unfinished wizard leaves UniFi in Factory Default state: its initial
-        site can be recreated on restart. These endpoints mirror the 10.6.101 UI.
+        site can be recreated on restart. These endpoints implement the local
+        setup flow originally verified with 10.6.101; each run checks completion.
         Test credentials, cookies and CSRF headers never enter public evidence.
         """
         port = self.forward("service/unifi", 8443)
@@ -366,7 +368,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
         assert "-Xms512M" in processes and "-Xmx1024M" in processes, "Runtime Java heap differs from chart values"
         self.report["runtimeHeapMiB"] = {"initial": 512, "max": 1024}
         self.record_volumes()
-        self.pass_check("unifi-10.6.101-setup-status-and-runtime-digests")
+        self.pass_check(f"unifi-{UNIFI_VERSION}-setup-status-and-runtime-digests")
 
     def config_hashes(self):
         encoded = self.k("exec", "-n", self.ns, "deployment/unifi", "--", "base64", "/config/data/system.properties")
@@ -493,7 +495,7 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
             try:
                 data = json.loads(self.run(cmd))
                 assert data["meta"]["up"] is True
-                assert data["meta"]["server_version"] == "10.6.101"
+                assert data["meta"]["server_version"] == UNIFI_VERSION
                 break
             except (RuntimeError, json.JSONDecodeError, AssertionError):
                 if attempt == 29:

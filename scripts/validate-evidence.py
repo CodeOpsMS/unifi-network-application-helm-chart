@@ -35,6 +35,22 @@ UI = load("ui_tests", "scripts/integration/post-setup-ui.py")
 STATE = {"commit": "a" * 40, "clean": True, "fingerprint": "b" * 64}
 
 
+class ReleaseImageTests(unittest.TestCase):
+    def test_chart_catalog_and_runtime_checks_use_the_same_image(self):
+        chart = ROOT / "charts/unifi-network-application"
+        meta = release.yaml.safe_load((chart / "Chart.yaml").read_text())
+        image = release.yaml.safe_load((chart / "values.yaml").read_text())["image"]
+        catalog = release.yaml.safe_load(meta["annotations"]["artifacthub.io/images"])
+        self.assertEqual(meta["appVersion"], SMOKE.UNIFI_VERSION)
+        self.assertTrue(image["tag"].startswith(meta["appVersion"] + "-ls"))
+        self.assertEqual(image["digest"], SMOKE.UNIFI_DIGEST)
+        self.assertEqual(catalog, [{"name": "unifi-network-application",
+                                   "image": f"{image['repository']}:{image['tag']}@{image['digest']}"}])
+        self.assertEqual({name for name in release.REQUIRED if name.startswith("unifi-")
+                          and name.endswith("-setup-status-and-runtime-digests")},
+                         {f"unifi-{SMOKE.UNIFI_VERSION}-setup-status-and-runtime-digests"})
+
+
 class SourceStateTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="unifi-source-test-")
@@ -166,6 +182,14 @@ class ReleaseEvidenceTests(unittest.TestCase):
             self.verify()
         self.report["checks"].extend([last, last])
         with self.assertRaises(ValueError):
+            self.verify()
+
+    def test_previous_application_version_evidence_is_rejected(self):
+        current = f"unifi-{SMOKE.UNIFI_VERSION}-setup-status-and-runtime-digests"
+        for check in self.report["checks"]:
+            if check["name"] == current:
+                check["name"] = "unifi-10.6.101-setup-status-and-runtime-digests"
+        with self.assertRaisesRegex(ValueError, "integration evidence"):
             self.verify()
 
     def test_package_hash_must_match(self):

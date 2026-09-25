@@ -3,6 +3,17 @@
 This chart runs one UniFi Network Application instance using the LinuxServer
 image, persistent `/config` storage, and a separately managed MongoDB.
 
+Chart **1.0.2** targets UniFi **10.6.106** with LinuxServer image
+`10.6.106-ls147`, pinned by its multi-platform SHA256 digest for Linux AMD64 and
+ARM64. This patch updates the application and includes OpenJDK/curl security fixes;
+the chart values API and container startup configuration remain compatible with 1.0.1.
+
+Before upgrading, back up MongoDB and `/config`. Use `--reset-values --values
+my-values.yaml` with your reviewed configuration so new chart defaults are loaded.
+If your values explicitly set `image.tag` or `image.digest`, update both together
+or remove those overrides to use the new defaults. `--reuse-values` can preserve
+the previous image pin. A Helm rollback does not undo database migrations.
+
 MongoDB must be provisioned and its application user created **before** installing
 the chart. This package contains no database deployment, initialization job,
 database PVC, or chart dependency.
