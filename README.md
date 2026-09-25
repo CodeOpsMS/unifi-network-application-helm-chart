@@ -2,13 +2,11 @@
 
 Deploy one persistent UniFi Network Application instance on Kubernetes with the LinuxServer image and an existing MongoDB server. The chart manages the application, its Service, an optional `/config` PVC, and an optional TLS Ingress. MongoDB is operated separately.
 
-Maintained by [CodeOpsMS](https://github.com/CodeOpsMS). This is a community chart, not a Ubiquiti or LinuxServer product. Released chart version **1.0.1** targets UniFi Network Application **10.6.101** using `lscr.io/linuxserver/unifi-network-application:10.6.101-ls145` with the digest in that release's chart values. UniFi Network Server and UniFi OS Server are different products; this chart packages the Network Application container.
+Maintained by [CodeOpsMS](https://github.com/CodeOpsMS). This is a community chart, not a Ubiquiti or LinuxServer product. Released chart version **1.0.2** targets UniFi Network Application **10.6.106** using `lscr.io/linuxserver/unifi-network-application:10.6.106-ls147` with the digest in that release's chart values. UniFi Network Server and UniFi OS Server are different products; this chart packages the Network Application container.
 
-This checkout prepares chart **1.0.2** for UniFi **10.6.106**, pinned to
-`10.6.106-ls147` and its verified multi-platform digest. The new image includes
-OpenJDK and curl security updates. See the [compatibility and validation review](docs/unifi-10.6.106-review.md)
+Chart **1.0.2** includes OpenJDK and curl security updates and has passed all 13
+SUSE-AI integration checks. See the [compatibility and validation review](docs/unifi-10.6.106-review.md)
 and [upgrade instructions](docs/OPERATIONS.de.md#upgrade-auf-chart-102--unifi-106106).
-The published installation commands below remain on 1.0.1 until 1.0.2 is released.
 
 ## Install
 
@@ -34,7 +32,7 @@ Copy [examples/values-loadbalancer.yaml](examples/values-loadbalancer.yaml), set
 helm repo add codeopsms https://codeopsms.github.io/unifi-network-application-helm-chart
 helm repo update
 helm upgrade --install unifi codeopsms/unifi-network-application \
-  --version 1.0.1 --namespace unifi --create-namespace \
+  --version 1.0.2 --namespace unifi --create-namespace \
   --kube-context YOUR_CONTEXT --values my-values.yaml \
   --wait --timeout 20m
 ```
@@ -44,14 +42,14 @@ The same chart is published as an OCI artifact:
 ```sh
 helm upgrade --install unifi \
   oci://ghcr.io/codeopsms/helm-charts/unifi-network-application \
-  --version 1.0.1 --namespace unifi --create-namespace \
+  --version 1.0.2 --namespace unifi --create-namespace \
   --kube-context YOUR_CONTEXT --values my-values.yaml \
   --wait --timeout 20m
 ```
 
 Repository source: [CodeOpsMS/unifi-network-application-helm-chart](https://github.com/CodeOpsMS/unifi-network-application-helm-chart). Release channels are populated by the release workflow; an unreleased checkout is installed locally with `helm upgrade --install unifi ./charts/unifi-network-application ...`.
 
-The published installation examples above use release 1.0.1. Both repositories provide the same tested archive. To list this repository under your Artifact Hub account, follow the [registration and publisher verification guide](docs/ARTIFACT-HUB.md).
+The published installation examples above use release 1.0.2. Both repositories provide the same tested archive. To list this repository under your Artifact Hub account, follow the [registration and publisher verification guide](docs/ARTIFACT-HUB.md).
 
 ## Configuration
 
@@ -142,7 +140,7 @@ Read the script and select the intended cluster before running it: unlike render
 
 Release publication requires the final source commit, the exact tested `.tgz`, the successful integration `summary.json` including cleanup, and the static `validation.json`. These files are uploaded to a draft release; a manual dispatch of [release.yml](.github/workflows/release.yml) invokes [scripts/release.py](scripts/release.py) to check their agreement and publish the supplied archive to OCI and the Helm repository **without rebuilding it**. The maintainer procedure is in [CONTRIBUTING.md](CONTRIBUTING.md#release-procedure).
 
-[Release 1.0.1](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.1) provides the chart, [SHA256SUMS](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.1/SHA256SUMS), [integration summary.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.1/summary.json), [static validation.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.1/validation.json), and [independent audit report](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.1/TEST-AUDIT.md). These reports identify the tested release source; later documentation commits do not change the published archive or its evidence.
+[Release 1.0.2](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.2) provides the chart, [SHA256SUMS](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.2/SHA256SUMS), [integration summary.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.2/summary.json), and [static validation.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.2/validation.json). These reports identify the tested release source; later documentation commits do not change the published archive or its evidence.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md), and [SECURITY.md](SECURITY.md). License notices are retained in [LICENSE](LICENSE).
 

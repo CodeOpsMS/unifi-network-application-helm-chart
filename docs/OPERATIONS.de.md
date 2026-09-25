@@ -16,18 +16,18 @@ Die eigene Values-Datei prüfen: Explizite `image.tag`- und `image.digest`-Eintr
 gemeinsam aktualisieren oder entfernen, damit die neuen Chartstandards greifen.
 `--reuse-values` kann den bisherigen Image-Pin beibehalten.
 
-Das noch unveröffentlichte Chart aus diesem Checkout installieren:
+Das veröffentlichte Chart aus dem eingerichteten Helm-Repository installieren:
 
 ```sh
-helm upgrade unifi ./charts/unifi-network-application \
+helm repo update
+helm upgrade unifi codeopsms/unifi-network-application --version 1.0.2 \
   --namespace unifi --kube-context YOUR_CONTEXT \
   --reset-values --values my-values.yaml --wait --timeout 20m
 ```
 
 `my-values.yaml` muss dabei alle bewusst gesetzten Datenbank-, Secret-, Storage-,
-Service- und Ingresswerte enthalten. Nach Veröffentlichung kann der Chartpfad durch
-`codeopsms/unifi-network-application --version 1.0.2` ersetzt werden. Ab Helm 3.14
-ist `--reset-then-reuse-values` eine Alternative, die neue Defaults mit bisherigen
+Service- und Ingresswerte enthalten. Ab Helm 3.14 ist `--reset-then-reuse-values`
+eine Alternative, die neue Defaults mit bisherigen
 expliziten Benutzerwerten kombiniert; bewusst gesetzte Image-Pins bleiben auch
 dabei erhalten und müssen geprüft werden.
 
@@ -211,4 +211,4 @@ Updates werden als neues festes Anwendungsimage mit passendem Digest und Chartve
 
 Die separat aufrufbare Clusterintegration ist in [scripts/integration/suseai-smoke.py](../scripts/integration/suseai-smoke.py) implementiert. Sie erstellt einen neuen Testnamespace mit eigener MongoDB und testet das gepackte Chart. Vor der Persistenzprüfung schließt sie den lokalen Ersteinrichtungsassistenten des Wegwerf-Testcontrollers mit zufällig erzeugten Zugangsdaten ab. Dabei werden weder ein Cloudkonto angebunden noch ein WLAN erstellt oder Geräte adoptiert. Dieser Schritt stellt einen eingerichteten Controller her: Eine unvollständige Einrichtung bleibt im Factory-Default-Zustand und kann ihre Site beim Neustart erneut anlegen. Vor Ausführung werden Zielkontext, Node und StorageClass kontrolliert. Die Prüfung nutzt weder ein Produktionsbackup noch die bestehenden Geräte. Eine positive Prüfung einer frischen Installation ist deshalb keine Freigabe des noch ausstehenden Controllerumzugs.
 
-Der lokale Ablauf lautet `make bootstrap`, `make validate`, `make package` und anschließend ein bewusst konfiguriertes `make smoke`. Das Releasepaket liegt unter `build/packages/unifi-network-application-1.0.2.tgz`. Die Veröffentlichung verwendet dieses bereits geprüfte Archiv zusammen mit `summary.json` und `validation.json`; Source-Commit, Fingerprint des sauberen Quellstands, Tag und Prüfberichte müssen übereinstimmen. Der Integrationslauf verwendet ausschließlich seine private Paketkopie und prüft die lokale Administratoranmeldung auch nach Neustarts erneut. Das Archiv wird bei der Veröffentlichung nicht neu gebaut. Bereits veröffentlichte Nachweise stehen beim [GitHub Release 1.0.1](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.1); sie gelten ausschließlich für jenes Archiv. Die genaue Vorgehensweise steht in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).
+Der lokale Ablauf lautet `make bootstrap`, `make validate`, `make package` und anschließend ein bewusst konfiguriertes `make smoke`. Das Releasepaket liegt unter `build/packages/unifi-network-application-1.0.2.tgz`. Die Veröffentlichung verwendet dieses bereits geprüfte Archiv zusammen mit `summary.json` und `validation.json`; Source-Commit, Fingerprint des sauberen Quellstands, Tag und Prüfberichte müssen übereinstimmen. Der Integrationslauf verwendet ausschließlich seine private Paketkopie und prüft die lokale Administratoranmeldung auch nach Neustarts erneut. Das Archiv wird bei der Veröffentlichung nicht neu gebaut. Bereits veröffentlichte Nachweise stehen beim [GitHub Release 1.0.2](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.2); sie gelten ausschließlich für jenes Archiv. Die genaue Vorgehensweise steht in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).

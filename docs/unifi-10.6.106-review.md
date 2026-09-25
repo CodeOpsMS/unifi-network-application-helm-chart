@@ -102,19 +102,49 @@ Die lokalen Prüfungen bestanden am 25.09.2026 unter Helm **3.21.3** und **4.2.4
 | Archivinhalt und Paketgrenzen | Beide Helm-Versionen erfolgreich |
 | `git diff --check` | Erfolgreich |
 
-Die maschinenlesbaren Ergebnisse stehen unter `build/validation/validation.json`
-und `build/validation/helm{3,4}/summary.json`. Das Entwicklungsarchiv ist
-`build/packages/unifi-network-application-1.0.2.tgz`. Die Prüfung erfolgte mit
-uncommittierten Änderungen (`sourceState.clean=false`); sie ist daher noch kein
-veröffentlichungsfähiger Releasebeleg.
+Für die Veröffentlichung wurden die statischen Prüfungen am sauberen Commit
+`f0de48129b7fed92fefd54670599bd0b6a990082` erneut ausgeführt
+(`sourceState.clean=true`). Der Integrationslauf
+`20260925090931-92ba8f` verwendete genau das statisch geprüfte Helm-4-Archiv.
 
-Ein SUSE-AI-Integrationstest und ein tatsächliches Upgrade von 10.6.101 auf
-10.6.106 wurden in diesem Arbeitsstand nicht ausgeführt.
-Der bestehende Smoke-Runner prüft Neuinstallation, Neustarts und ein Upgrade
-derselben Chartversion; er ersetzt keinen Versionswechseltest. Die Berichte des
-veröffentlichten Charts 1.0.1 gelten nicht für das neue Image.
+Alle **13 SUSE-AI-Integrationstests** bestanden auf Kubernetes
+`v1.34.6+rke2r3`, AMD64 und StorageClass `harvester`:
 
-Für den Rollout gelten die [Upgrade-Anweisungen](OPERATIONS.de.md#upgrade-auf-chart-102--unifi-106106).
-Die Veröffentlichung von 1.0.2 erfordert weiterhin einen sauberen Commit und die
-in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure) beschriebenen statischen
-und Laufzeitbelege für genau dasselbe Archiv.
+- Authentifizierte externe MongoDB mit Sonderzeichen in Zugangsdaten;
+  serverseitige Helm- und Kubernetes-Dry-runs.
+- UniFi 10.6.106 mit geprüftem Runtime-Digest, lokaler Ersteinrichtung,
+  Administrator-Login und geschützter API.
+- Persistenz von Konfiguration, Zertifikat, Datenbankmarkern und Site-Identität
+  nach UniFi-/MongoDB-Neustarts und einem Upgrade derselben Paketversion.
+- Fehlender Secret-Key, falsches Passwort und unerreichbare Datenbank führen
+  korrekt zu einem nicht bereiten Pod.
+- Ingress-Hostrouting, geprüftes Testzertifikat und HTTPS-Backend.
+
+`passed` und `cleanupPassed` sind jeweils `true`; der Testnamespace und alle fünf
+Testvolumes wurden entfernt. Ein tatsächlicher Versionswechsel von 10.6.101 auf
+10.6.106, ein Produktionsbackup-Restore und die Anbindung vorhandener Geräte
+waren nicht Teil dieses Laufs. ARM64 wurde anhand der Registry-Metadaten geprüft;
+die Laufzeittests verwendeten AMD64.
+
+## Veröffentlichung
+
+[Release 1.0.2](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.2)
+wurde durch den erfolgreichen
+[Release-Workflow](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/actions/runs/36118199302)
+veröffentlicht. Das getestete Archiv wurde ohne Neubau nach GitHub, GitHub Pages
+(Helm-Repository) und GHCR (OCI) übernommen. Downloads aus allen drei Quellen
+wurden mit diesem SHA256 verglichen:
+
+```text
+8237c1023a3f07bcbd29dd272bb12d2198209fd58092a693a1b989eb970e7633
+```
+
+Die veröffentlichten Belege sind
+[summary.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.2/summary.json),
+[validation.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.2/validation.json)
+und [SHA256SUMS](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.2/SHA256SUMS).
+Sie identifizieren den getesteten Release-Commit; dieser spätere
+Dokumentationsstand verändert weder Archiv noch Prüfbelege.
+
+Für den Rollout gelten die [Upgrade-Anweisungen](OPERATIONS.de.md#upgrade-auf-chart-102--unifi-106106)
+und für spätere Releases die [Veröffentlichungsprozedur](../CONTRIBUTING.md#release-procedure).

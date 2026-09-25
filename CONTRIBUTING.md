@@ -14,7 +14,7 @@ Increment the chart version for a new release, document changes in `CHANGELOG.md
 
 Finish and commit the intended source before creating release evidence. The static validation report, integration report, release tag, and publishing checkout must identify the same commit and clean source fingerprint. Static development checks may run with uncommitted changes; those reports are not releasable. Optimized Python execution is rejected for the integration checks. Offline release-gate regression tests also exercise python -O. Do not change tracked files during testing. After any source correction, commit the correction and repeat the relevant release checks with a newly packaged archive.
 
-The commands below prepare version 1.0.2 from this checkout. Publish it only after the required checks pass. For a future release, increment the chart version and substitute that new version throughout; published versions must not be overwritten.
+The commands below illustrate the procedure used for version 1.0.2. For a future release, increment the chart version and substitute that new version throughout; published versions must not be overwritten.
 
 ```sh
 make bootstrap
