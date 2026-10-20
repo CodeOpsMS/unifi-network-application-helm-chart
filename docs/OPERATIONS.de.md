@@ -2,6 +2,31 @@
 
 Dieses Chart betreibt eine UniFi Network Application mit externer MongoDB. Die Datenbank einschließlich Benutzerverwaltung, Datensicherung und Updates wird separat bereitgestellt. Der dokumentierte Ausgangscontroller für den geplanten Umzug läuft auf **9.4.19**. Dessen Backup-Wiederherstellung und Geräteumzug stehen noch aus; eine frische Testinstallation ersetzt diese Prüfung nicht.
 
+## Upgrade auf Chart 1.0.3 / LinuxServer ls150
+
+Das vorbereitete Chart 1.0.3 aktualisiert das Image von `10.6.106-ls147` auf
+`10.6.106-ls150`. UniFi bleibt bei 10.6.106. Die neuen Systempakete enthalten
+Sicherheitskorrekturen für curl, OpenSSL und SQLite; Values, Ports, Datenbank,
+Probes und Persistenz bleiben kompatibel. Details stehen im
+[Imagevergleich](unifi-ls150-review.md).
+
+Vor dem Upgrade MongoDB und `/config` sichern. Explizite `image.tag`- und
+`image.digest`-Werte gemeinsam aktualisieren oder entfernen, damit die neuen
+Defaults greifen. Nur den Tag zu ändern genügt bei gesetztem Digest nicht.
+Der noch unveröffentlichte Chart lässt sich mit den vollständigen eigenen
+Einstellungen aus diesem Checkout installieren:
+
+```sh
+helm upgrade unifi ./charts/unifi-network-application \
+  --namespace unifi --kube-context YOUR_CONTEXT \
+  --reset-values --values my-values.yaml --wait --timeout 20m
+```
+
+Nach Veröffentlichung kann der Chartpfad durch
+`codeopsms/unifi-network-application --version 1.0.3` ersetzt werden.
+Der Cluster-Test muss für das neue Image erneut erfolgreich ausgeführt werden;
+die veröffentlichten Belege für Chart 1.0.2 gelten nur für dessen Image ls147.
+
 ## Upgrade auf Chart 1.0.2 / UniFi 10.6.106
 
 Chart 1.0.2 aktualisiert das Image von `10.6.101-ls145` auf `10.6.106-ls147`.
@@ -162,7 +187,7 @@ Backups werden außerhalb des Anwendungsvolumes gespeichert, geschützt und rege
 
 ## Rotation von Datenbankzugangsdaten
 
-Das gepinnte LinuxServer-Startskript erzeugt `/config/data/system.properties` nur, wenn diese Datei noch nicht existiert. Die Verbindungswerte bleiben anschließend dort erhalten. Eine Secretänderung, ein Helm-Upgrade oder ein Podneustart allein aktualisiert bestehende URIs nicht. In der Datei enthalten `db.mongo.uri` und `statdb.mongo.uri` die Verbindungsdaten. [Startskript des Images](https://github.com/linuxserver/docker-unifi-network-application/blob/10.6.106-ls147/root/etc/s6-overlay/s6-rc.d/init-unifi-network-application-config/run)
+Das gepinnte LinuxServer-Startskript erzeugt `/config/data/system.properties` nur, wenn diese Datei noch nicht existiert. Die Verbindungswerte bleiben anschließend dort erhalten. Eine Secretänderung, ein Helm-Upgrade oder ein Podneustart allein aktualisiert bestehende URIs nicht. In der Datei enthalten `db.mongo.uri` und `statdb.mongo.uri` die Verbindungsdaten. [Startskript des Images](https://github.com/linuxserver/docker-unifi-network-application/blob/10.6.106-ls150/root/etc/s6-overlay/s6-rc.d/init-unifi-network-application-config/run)
 
 Für eine Rotation mit Rückkehrmöglichkeit:
 
@@ -211,4 +236,4 @@ Updates werden als neues festes Anwendungsimage mit passendem Digest und Chartve
 
 Die separat aufrufbare Clusterintegration ist in [scripts/integration/suseai-smoke.py](../scripts/integration/suseai-smoke.py) implementiert. Sie erstellt einen neuen Testnamespace mit eigener MongoDB und testet das gepackte Chart. Vor der Persistenzprüfung schließt sie den lokalen Ersteinrichtungsassistenten des Wegwerf-Testcontrollers mit zufällig erzeugten Zugangsdaten ab. Dabei werden weder ein Cloudkonto angebunden noch ein WLAN erstellt oder Geräte adoptiert. Dieser Schritt stellt einen eingerichteten Controller her: Eine unvollständige Einrichtung bleibt im Factory-Default-Zustand und kann ihre Site beim Neustart erneut anlegen. Vor Ausführung werden Zielkontext, Node und StorageClass kontrolliert. Die Prüfung nutzt weder ein Produktionsbackup noch die bestehenden Geräte. Eine positive Prüfung einer frischen Installation ist deshalb keine Freigabe des noch ausstehenden Controllerumzugs.
 
-Der lokale Ablauf lautet `make bootstrap`, `make validate`, `make package` und anschließend ein bewusst konfiguriertes `make smoke`. Das Releasepaket liegt unter `build/packages/unifi-network-application-1.0.2.tgz`. Die Veröffentlichung verwendet dieses bereits geprüfte Archiv zusammen mit `summary.json` und `validation.json`; Source-Commit, Fingerprint des sauberen Quellstands, Tag und Prüfberichte müssen übereinstimmen. Der Integrationslauf verwendet ausschließlich seine private Paketkopie und prüft die lokale Administratoranmeldung auch nach Neustarts erneut. Das Archiv wird bei der Veröffentlichung nicht neu gebaut. Bereits veröffentlichte Nachweise stehen beim [GitHub Release 1.0.2](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.2); sie gelten ausschließlich für jenes Archiv. Die genaue Vorgehensweise steht in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).
+Der lokale Ablauf lautet `make bootstrap`, `make validate`, `make package` und anschließend ein bewusst konfiguriertes `make smoke`. Das Releasepaket liegt unter `build/packages/unifi-network-application-1.0.3.tgz`. Die Veröffentlichung verwendet dieses bereits geprüfte Archiv zusammen mit `summary.json` und `validation.json`; Source-Commit, Fingerprint des sauberen Quellstands, Tag und Prüfberichte müssen übereinstimmen. Der Integrationslauf verwendet ausschließlich seine private Paketkopie und prüft die lokale Administratoranmeldung auch nach Neustarts erneut. Das Archiv wird bei der Veröffentlichung nicht neu gebaut. Bereits veröffentlichte Nachweise stehen beim [GitHub Release 1.0.2](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.2); sie gelten ausschließlich für jenes Archiv. Die genaue Vorgehensweise steht in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).
