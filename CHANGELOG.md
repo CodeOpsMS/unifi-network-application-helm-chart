@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 — 2026-10-20 (unreleased)
+
+- Update the LinuxServer image from `10.6.106-ls147` to `10.6.106-ls150` and pin its verified AMD64/ARM64 index digest. UniFi remains at 10.6.106.
+- Include updated curl, OpenSSL and SQLite packages with fixes documented in [USN-8820-1](https://ubuntu.com/security/notices/USN-8820-1), [USN-8861-1](https://ubuntu.com/security/notices/USN-8861-1) and [USN-8775-1](https://ubuntu.com/security/notices/USN-8775-1). The image also updates rust-coreutils.
+- Preserve the values API, templates, database configuration, ports, probes, storage and Java heap settings; upstream Dockerfiles and application startup scripts are unchanged.
+- Update the integration runner's expected index and AMD64 image digests and document the [image compatibility review](docs/unifi-ls150-review.md). The 1.0.2 runtime evidence does not certify this new image.
+
 ## 1.0.2 — 2026-09-25
 
 - Update UniFi Network Application from 10.6.101 to 10.6.106 and the LinuxServer image from `10.6.101-ls145` to `10.6.106-ls147`, pinning its verified AMD64/ARM64 index digest.

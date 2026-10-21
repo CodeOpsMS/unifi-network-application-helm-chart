@@ -8,6 +8,11 @@ Chart **1.0.2** includes OpenJDK and curl security updates and has passed all 13
 SUSE-AI integration checks. See the [compatibility and validation review](docs/unifi-10.6.106-review.md)
 and [upgrade instructions](docs/OPERATIONS.de.md#upgrade-auf-chart-102--unifi-106106).
 
+This checkout prepares chart **1.0.3** with image **10.6.106-ls150** and the same
+UniFi version. It includes updated curl, OpenSSL and SQLite packages. See the
+[image review and validation limits](docs/unifi-ls150-review.md). Published
+installation examples below remain on 1.0.2 until 1.0.3 is released.
+
 ## Install
 
 Prerequisites:
@@ -124,12 +129,12 @@ make validate
 make package
 ```
 
-The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging this checkout writes `build/packages/unifi-network-application-1.0.2.tgz`. The static report records the source commit, working-tree fingerprint, and whether the source is clean. Development checks may run with uncommitted edits, but release verification rejects such evidence. Run the separate integration procedure against those exact bytes from a clean committed source when runtime verification is needed:
+The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging this checkout writes `build/packages/unifi-network-application-1.0.3.tgz`. The static report records the source commit, working-tree fingerprint, and whether the source is clean. Development checks may run with uncommitted edits, but release verification rejects such evidence. Run the separate integration procedure against those exact bytes from a clean committed source when runtime verification is needed:
 
 ```sh
 source .tools/env.sh
 python3 scripts/integration/suseai-smoke.py \
-  --package build/packages/unifi-network-application-1.0.2.tgz \
+  --package build/packages/unifi-network-application-1.0.3.tgz \
   --context suseai --worker laemk8saiworker2 --storage-class harvester \
   --evidence build/integration
 ```
