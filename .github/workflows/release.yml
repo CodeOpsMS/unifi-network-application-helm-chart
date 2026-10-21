@@ -1,47 +1,94 @@
 name: Publish tested chart
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      version:
-        description: Existing draft release with tested archive and reports
-        required: true
-        default: 1.0.0
-        type: string
 
 permissions:
-  contents: write
-  packages: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: chart-release
   cancel-in-progress: false
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.pages.outputs.page_url }}
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      mode: ${{ steps.release.outputs.mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ inputs.version }}
+          persist-credentials: false
       - name: Install pinned tools
-        run: ./scripts/bootstrap-tools.sh
-      - name: Download tested artifacts and publish without rebuilding
+        run: make bootstrap
+      - name: Detect a new version or an unfinished draft
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          source .tools/env.sh
+          python3 scripts/release-automation.py plan
+
+  test:
+    needs: plan
+    if: needs.plan.outputs.mode == 'build'
+    uses: ./.github/workflows/release-test.yml
+
+  publish:
+    needs: [plan, test]
+    if: >-
+      always() && needs.plan.result == 'success' &&
+      ((needs.plan.outputs.mode == 'build' && needs.test.result == 'success') ||
+       (needs.plan.outputs.mode == 'resume' && needs.test.result == 'skipped'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    env:
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned tools
+        run: make bootstrap
+      - name: Download this run's tested archive and reports
+        if: needs.plan.outputs.mode == 'build'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release-inputs
+          path: build/release-input
+      - name: Resume with the original draft assets
+        if: needs.plan.outputs.mode == 'resume'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          mkdir -p build/release-input
+          gh release download "$RELEASE_VERSION" --dir build/release-input \
+            --pattern "unifi-network-application-${RELEASE_VERSION}.tgz" \
+            --pattern summary.json --pattern validation.json
+      - name: Create the tag and draft, then publish without rebuilding
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           source .tools/env.sh
-          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          mkdir -p build/release-input
-          gh release download "$RELEASE_VERSION" --dir build/release-input
+          python3 scripts/release-automation.py stage
           python3 scripts/release.py publish \
             --package "build/release-input/unifi-network-application-${RELEASE_VERSION}.tgz" \
             --summary build/release-input/summary.json \
@@ -56,7 +103,6 @@ jobs:
       - name: Verify Pages bytes and publish GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
           package="unifi-network-application-${RELEASE_VERSION}.tgz"

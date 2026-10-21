@@ -50,6 +50,7 @@ fi
 
 python3 scripts/validate-persistence.py
 python3 scripts/validate-evidence.py
+python3 scripts/validate-automation.py
 
 for major in ${HELM_MAJORS:-3 4}; do
   [[ "$major" == 3 || "$major" == 4 ]]

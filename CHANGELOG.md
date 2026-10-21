@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.0.3 — 2026-10-20 (unreleased)
+## Unreleased
+
+- Automate new chart releases after merges to `main`, including isolated Kubernetes integration tests, tag and release creation, GHCR publication and GitHub Pages deployment. Preserve exact tested archives and reject changed charts without a version bump.
+
+## 1.0.3 — 2026-10-21
 
 - Update the LinuxServer image from `10.6.106-ls147` to `10.6.106-ls150` and pin its verified AMD64/ARM64 index digest. UniFi remains at 10.6.106.
 - Include updated curl, OpenSSL and SQLite packages with fixes documented in [USN-8820-1](https://ubuntu.com/security/notices/USN-8820-1), [USN-8861-1](https://ubuntu.com/security/notices/USN-8861-1) and [USN-8775-1](https://ubuntu.com/security/notices/USN-8775-1). The image also updates rust-coreutils.

@@ -4,7 +4,7 @@ Dieses Chart betreibt eine UniFi Network Application mit externer MongoDB. Die D
 
 ## Upgrade auf Chart 1.0.3 / LinuxServer ls150
 
-Das vorbereitete Chart 1.0.3 aktualisiert das Image von `10.6.106-ls147` auf
+Chart 1.0.3 aktualisiert das Image von `10.6.106-ls147` auf
 `10.6.106-ls150`. UniFi bleibt bei 10.6.106. Die neuen Systempakete enthalten
 Sicherheitskorrekturen für curl, OpenSSL und SQLite; Values, Ports, Datenbank,
 Probes und Persistenz bleiben kompatibel. Details stehen im
@@ -13,7 +13,7 @@ Probes und Persistenz bleiben kompatibel. Details stehen im
 Vor dem Upgrade MongoDB und `/config` sichern. Explizite `image.tag`- und
 `image.digest`-Werte gemeinsam aktualisieren oder entfernen, damit die neuen
 Defaults greifen. Nur den Tag zu ändern genügt bei gesetztem Digest nicht.
-Der noch unveröffentlichte Chart lässt sich mit den vollständigen eigenen
+Der Chart lässt sich lokal mit den vollständigen eigenen
 Einstellungen aus diesem Checkout installieren:
 
 ```sh
@@ -22,10 +22,9 @@ helm upgrade unifi ./charts/unifi-network-application \
   --reset-values --values my-values.yaml --wait --timeout 20m
 ```
 
-Nach Veröffentlichung kann der Chartpfad durch
+Für die veröffentlichte Version kann der Chartpfad durch
 `codeopsms/unifi-network-application --version 1.0.3` ersetzt werden.
-Der Cluster-Test muss für das neue Image erneut erfolgreich ausgeführt werden;
-die veröffentlichten Belege für Chart 1.0.2 gelten nur für dessen Image ls147.
+Für Chart 1.0.3 sind alle 13 SUSE-AI-Integrationstests einschließlich Bereinigung erfolgreich abgeschlossen. Die [Prüfberichte](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.3) gehören zu dessen veröffentlichtem Archiv.
 
 ## Upgrade auf Chart 1.0.2 / UniFi 10.6.106
 
@@ -236,4 +235,6 @@ Updates werden als neues festes Anwendungsimage mit passendem Digest und Chartve
 
 Die separat aufrufbare Clusterintegration ist in [scripts/integration/suseai-smoke.py](../scripts/integration/suseai-smoke.py) implementiert. Sie erstellt einen neuen Testnamespace mit eigener MongoDB und testet das gepackte Chart. Vor der Persistenzprüfung schließt sie den lokalen Ersteinrichtungsassistenten des Wegwerf-Testcontrollers mit zufällig erzeugten Zugangsdaten ab. Dabei werden weder ein Cloudkonto angebunden noch ein WLAN erstellt oder Geräte adoptiert. Dieser Schritt stellt einen eingerichteten Controller her: Eine unvollständige Einrichtung bleibt im Factory-Default-Zustand und kann ihre Site beim Neustart erneut anlegen. Vor Ausführung werden Zielkontext, Node und StorageClass kontrolliert. Die Prüfung nutzt weder ein Produktionsbackup noch die bestehenden Geräte. Eine positive Prüfung einer frischen Installation ist deshalb keine Freigabe des noch ausstehenden Controllerumzugs.
 
-Der lokale Ablauf lautet `make bootstrap`, `make validate`, `make package` und anschließend ein bewusst konfiguriertes `make smoke`. Das Releasepaket liegt unter `build/packages/unifi-network-application-1.0.3.tgz`. Die Veröffentlichung verwendet dieses bereits geprüfte Archiv zusammen mit `summary.json` und `validation.json`; Source-Commit, Fingerprint des sauberen Quellstands, Tag und Prüfberichte müssen übereinstimmen. Der Integrationslauf verwendet ausschließlich seine private Paketkopie und prüft die lokale Administratoranmeldung auch nach Neustarts erneut. Das Archiv wird bei der Veröffentlichung nicht neu gebaut. Bereits veröffentlichte Nachweise stehen beim [GitHub Release 1.0.2](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.2); sie gelten ausschließlich für jenes Archiv. Die genaue Vorgehensweise steht in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).
+Neue Chartversionen werden nach einem Merge nach `main` automatisch veröffentlicht. Die Pipeline prüft beide Helm-Versionen und führt die vollständige Clusterintegration in einem kurzlebigen kind-Cluster auf dem GitHub-Runner aus. Danach erstellt sie Tag, Release und Pakete für GHCR und GitHub Pages. Persönliche Rancher-Zugangsdaten sind dafür nicht erforderlich. Änderungen am gepackten Chart benötigen weiterhin eine neue Version in `Chart.yaml`; reine Dokumentationsänderungen erzeugen kein weiteres Release.
+
+Für lokale Prüfungen stehen `make bootstrap`, `make validate` und der bestehende SUSE-AI-Test weiterhin bereit. `python3 scripts/release-automation.py package` übernimmt das statisch geprüfte Archiv nach `build/release-input/`. Die Veröffentlichung verwendet ausschließlich das Archiv, für das statische und Laufzeitberichte zum gleichen sauberen Commit vorliegen. Die [Prüfberichte zu Release 1.0.3](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.3) bleiben unverändert. Einzelheiten und Wiederholungen fehlgeschlagener Veröffentlichungen stehen in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).

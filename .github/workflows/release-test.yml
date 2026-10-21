@@ -1,0 +1,54 @@
+name: Test release archive
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned tools
+        run: make bootstrap
+      - name: Validate both Helm versions and retain the tested archive
+        run: |
+          set -euo pipefail
+          make validate
+          source .tools/env.sh
+          python3 scripts/release-automation.py package
+      - name: Test the archive in a disposable Kubernetes cluster
+        run: |
+          set -euo pipefail
+          source .tools/env.sh
+          version="$(helm show chart charts/unifi-network-application | sed -n 's/^version: //p')"
+          ./scripts/integration/kind-smoke.sh "build/release-input/unifi-network-application-${version}.tgz"
+          python3 scripts/release-automation.py collect
+      - name: Remove the owned CI cluster
+        if: always()
+        run: ./scripts/integration/kind-smoke.sh cleanup
+      - name: Upload verified release inputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-inputs
+          overwrite: true
+          path: build/release-input/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-test-evidence
+          overwrite: true
+          path: |
+            build/validation/
+            build/ci-integration/
+          if-no-files-found: warn
+          retention-days: 30

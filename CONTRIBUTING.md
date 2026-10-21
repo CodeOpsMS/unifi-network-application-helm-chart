@@ -8,52 +8,59 @@ Use a disposable cluster or the opt-in integration script for runtime checks. Ne
 
 Before submitting, run `make bootstrap` followed by `make validate` to execute the repository's checks with the pinned tools and both Helm major versions. `make package` writes the release archive to `build/packages`. For a release, also run `make smoke` against that archive and record the environment and limits. State which checks ran and which remain outstanding; rendering and server dry-run do not prove application startup, database authentication, persistence after restart, or device adoption.
 
-Increment the chart version for a new release, document changes in `CHANGELOG.md`, and keep the application version and pinned image aligned. The release workflow publishes packaged charts to GitHub Pages and GHCR; publication is performed by maintainers from a reviewed release revision.
+Increment the chart version for a new release, document changes in `CHANGELOG.md`, and keep the application version and pinned image aligned. The release workflow publishes packaged charts to GitHub Pages and GHCR; publication runs automatically after a reviewed version change reaches `main`.
 
 ## Release procedure
 
-Finish and commit the intended source before creating release evidence. The static validation report, integration report, release tag, and publishing checkout must identify the same commit and clean source fingerprint. Static development checks may run with uncommitted changes; those reports are not releasable. Optimized Python execution is rejected for the integration checks. Offline release-gate regression tests also exercise python -O. Do not change tracked files during testing. After any source correction, commit the correction and repeat the relevant release checks with a newly packaged archive.
+A push to `main` (including a merged pull request) starts [Publish tested chart](.github/workflows/release.yml). Change `version` in `charts/unifi-network-application/Chart.yaml` in the pull request when changing packaged chart files. The pipeline uses that stable `MAJOR.MINOR.PATCH` version; it does not guess or commit a version bump. A merge that leaves the published chart unchanged skips publication. Changed chart files without a version bump fail clearly, and a new version must be greater than existing published versions.
 
-The commands below prepare version 1.0.3 from this checkout. Publish it only after the required checks pass. For a future release, increment the chart version and substitute that new version throughout; published versions must not be overwritten.
+The automatic workflow performs these steps:
+
+1. Inspect the chart version, existing tags and releases using read-only permissions.
+2. Run the complete Helm 3/4 validation and retain the exact Helm 4 archive tested by the render and package checks.
+3. Create a disposable Kubernetes cluster with kind on an Ubuntu 24.04 AMD64 GitHub runner. Run all 13 integration checks, including local setup, authentication, persistence, database error handling and ingress TLS. Remove the owned namespace, volumes and cluster.
+4. Verify that the static report, integration report, source commit and package hash agree. Only after success, use a separate publishing job to create the version tag and draft release with the chart archive, `summary.json` and `validation.json`.
+5. Publish those exact bytes to GHCR and GitHub Pages, verify the Pages download, then make the GitHub release public. The publishing job never rebuilds the archive.
+
+Only the publishing job has repository/package/Pages write permissions and uses the existing `github-pages` environment. The environment must allow deployments from `main`. Tests use an isolated local Docker network on the hosted runner; they need no Rancher login, private-cluster access, repository secrets or self-hosted runner. GitHub's repository `GITHUB_TOKEN` is sufficient. Tag creation and publication happen in the same workflow, so they do not depend on another workflow being triggered by a bot-created tag.
+
+The [CI fixture lock](scripts/integration/ci-tools.lock.json) pins kind, Kubernetes, kubectl, metrics-server and the ingress manifest with checksums or image digests. The pinned ingress-nginx controller is a disposable compatibility fixture for the chart's existing nginx annotations; its [upstream retirement](https://kubernetes.io/blog/2026/01/29/ingress-nginx-statement/) remains relevant when choosing production ingress infrastructure. Metrics-server uses the self-signed kubelet certificate option only inside this fixture. The external SUSE-AI integration command remains available with its original defaults.
+
+Do not create tags or releases manually for the normal merge workflow. Keep published versions immutable. A documentation-only merge after a release does not change that release's source, archive or reports. Static development checks may run with uncommitted changes, but release evidence must identify a clean committed source. Optimized Python execution is rejected for integration checks.
+
+### Checking pipeline changes before merging
+
+The existing **Lint and test** workflow can run the same release tests on a feature branch without publishing anything:
 
 ```sh
-make bootstrap
-make validate
-make package
-make smoke \
-  PACKAGE=build/packages/unifi-network-application-1.0.3.tgz \
-  SMOKE_ARGS='--context suseai --worker laemk8saiworker2 --storage-class harvester --evidence build/integration'
+gh workflow run lint-test.yml \
+  --repo CodeOpsMS/unifi-network-application-helm-chart \
+  --ref YOUR_BRANCH --field integration=true
 ```
 
-The smoke command creates resources in an owned temporary namespace. Choose the intended context, worker, and storage class before executing it. The runner copies the package into its private directory and uses that copy throughout the run, including upgrades. Keep the exact successful package; do not regenerate it for upload. The static report is `build/validation/validation.json`. The integration run writes `summary.json` under `build/integration/<run-id>/`; inspect its `passed`, `cleanupPassed`, `packageSha256`, `sourceCommit`, and check results.
+It uploads `release-inputs` and `release-test-evidence` artifacts. The release workflow itself publishes only from `main`.
 
-Use the downloaded tool environment and check the release inputs locally, substituting the actual integration run directory:
+For local static validation, run `make bootstrap` and `make validate`. To retain the archive that was actually tested, use:
 
 ```sh
 source .tools/env.sh
-python3 scripts/release.py verify \
-  --package build/packages/unifi-network-application-1.0.3.tgz \
-  --summary build/integration/RUN_ID/summary.json \
-  --validation build/validation/validation.json
+python3 scripts/release-automation.py package
 ```
 
-Create and push the `1.0.3` tag at that tested commit, then create a **draft** GitHub release for the existing tag. Upload the same archive plus the two reports under these exact asset names:
+This writes the chart archive and static report into `build/release-input/`. To run the existing external-cluster checks, pass that archive to `make smoke` with an explicitly selected context, worker, storage class and evidence directory. The integration runner uses its private copy throughout. Its summary must report `passed: true`, `cleanupPassed: true`, the same source and package hash. A successful fresh test installation does not certify an existing controller migration or device adoption.
 
-- `unifi-network-application-1.0.3.tgz`
-- `summary.json`
-- `validation.json`
+### Retrying a release
 
-Review the draft's notes and assets. Dispatch **Publish tested chart** in GitHub Actions with `version=1.0.3`, or use:
+Use **Re-run failed jobs** on the original workflow run after resolving a transient failure. This preserves its exact commit and previously uploaded test artifact. A complete draft can also resume in a rerun of the whole original workflow: the pipeline downloads its existing archive and reports and verifies them again. It never silently repackages or replaces draft assets. A partial draft requires retrying the failed publishing job with its original artifact; a full rerun stops and explains this instead of mixing evidence from different archives. Tags pointing at a different commit and published releases with missing assets require investigation.
+
+For a new attempt at the current `main` version, **Run workflow** is also available:
 
 ```sh
 gh workflow run release.yml \
-  --repo CodeOpsMS/unifi-network-application-helm-chart \
-  --ref main --field version=1.0.3
+  --repo CodeOpsMS/unifi-network-application-helm-chart --ref main
 ```
 
-The workflow checks out the version tag and downloads the draft assets. `scripts/release.py` verifies the source commit, successful checks, package hash, and package/source agreement before publishing the supplied package. It does not run `helm package` again. Configure GitHub Pages publishing and repository/package permissions before the first release, and verify the resulting Helm repository and OCI downloads after the publishing workflow completes.
-
-Keep release versions immutable. If a publishing run stops after a partial upload, inspect its logs and the existing remote artifacts before retrying; do not replace a published package with different bytes. Existing release reports remain available from the [1.0.0 release page](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.0); a new version receives its own reports only when published.
+There is no version input: the checkout's `Chart.yaml` determines the version. If `main` has moved since a failed release, rerun the original run instead. Never replace a published package with different bytes. Release assets and CI artifacts retain the evidence used by the publishing job.
 
 ## Initial setup and browser review
 

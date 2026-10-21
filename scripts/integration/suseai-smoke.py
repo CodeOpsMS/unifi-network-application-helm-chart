@@ -485,10 +485,11 @@ admin.createUser({user: process.env.APP_USER, pwd: process.env.APP_PASSWORD,
                      "data": {"tls.crt": base64.b64encode(cert.read_bytes()).decode(), "tls.key": base64.b64encode(key.read_bytes()).decode()}})
         vals = self.values(ingress={"enabled": True, "className": "nginx", "host": host, "tlsSecretName": "ingress-tls"})
         self.h("upgrade", "unifi", str(self.package), "-n", self.ns, "-f", vals, "--wait", "--timeout=16m", timeout=1020)
-        selector = "app.kubernetes.io/name=rke2-ingress-nginx,app.kubernetes.io/component=controller"
-        pods = self.obj("get", "pods", "-n", "kube-system", "-l", selector)["items"]
+        selector = self.args.ingress_selector
+        namespace = self.args.ingress_namespace
+        pods = self.obj("get", "pods", "-n", namespace, "-l", selector)["items"]
         pod = next(p for p in pods if any(c["type"] == "Ready" and c["status"] == "True" for c in p["status"]["conditions"]))
-        port = self.forward("pod/" + pod["metadata"]["name"], 443, "kube-system")
+        port = self.forward("pod/" + pod["metadata"]["name"], 443, namespace)
         cmd = ["curl", "--noproxy", "*", "--silent", "--show-error", "--fail", "--max-time", "15", "--cacert", str(cert),
                "--resolve", f"{host}:{port}:127.0.0.1", f"https://{host}:{port}/status"]
         for attempt in range(30):
@@ -571,6 +572,8 @@ def main():
     parser.add_argument("--context", default="suseai")
     parser.add_argument("--worker", default="laemk8saiworker2")
     parser.add_argument("--storage-class", default="harvester")
+    parser.add_argument("--ingress-namespace", default="kube-system")
+    parser.add_argument("--ingress-selector", default="app.kubernetes.io/name=rke2-ingress-nginx,app.kubernetes.io/component=controller")
     parser.add_argument("--helm", default="helm")
     parser.add_argument("--evidence", default=".artifacts/integration")
     args = parser.parse_args()
