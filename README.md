@@ -6,6 +6,12 @@ Maintained by [CodeOpsMS](https://github.com/CodeOpsMS). This is a community cha
 
 Chart **1.0.3** includes curl, OpenSSL and SQLite security updates and passed all 13 SUSE-AI integration checks, including cleanup. See the [image compatibility review](docs/unifi-ls150-review.md), [release evidence](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.3) and [upgrade instructions](docs/OPERATIONS.de.md#upgrade-auf-chart-103--linuxserver-ls150).
 
+This checkout prepares chart **1.0.4** for UniFi **10.6.109** with LinuxServer
+image **10.6.109-ls153**. See the [compatibility review](docs/unifi-10.6.109-review.md).
+The update branch also includes the previously prepared release automation;
+publication starts after its merge to `main`. The published installation examples
+remain on 1.0.3 until the new release is available.
+
 ## Install
 
 Prerequisites:
@@ -122,12 +128,12 @@ make validate
 make package
 ```
 
-The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging this checkout writes `build/packages/unifi-network-application-1.0.3.tgz`. The static report records the source commit, working-tree fingerprint, and whether the source is clean. Development checks may run with uncommitted edits, but release verification rejects such evidence. Run the separate integration procedure against those exact bytes from a clean committed source when runtime verification is needed:
+The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging this checkout writes `build/packages/unifi-network-application-1.0.4.tgz`. The static report records the source commit, working-tree fingerprint, and whether the source is clean. Development checks may run with uncommitted edits, but release verification rejects such evidence. Run the separate integration procedure against those exact bytes from a clean committed source when runtime verification is needed:
 
 ```sh
 source .tools/env.sh
 python3 scripts/integration/suseai-smoke.py \
-  --package build/packages/unifi-network-application-1.0.3.tgz \
+  --package build/packages/unifi-network-application-1.0.4.tgz \
   --context suseai --worker laemk8saiworker2 --storage-class harvester \
   --evidence build/integration
 ```

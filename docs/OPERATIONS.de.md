@@ -2,6 +2,30 @@
 
 Dieses Chart betreibt eine UniFi Network Application mit externer MongoDB. Die Datenbank einschließlich Benutzerverwaltung, Datensicherung und Updates wird separat bereitgestellt. Der dokumentierte Ausgangscontroller für den geplanten Umzug läuft auf **9.4.19**. Dessen Backup-Wiederherstellung und Geräteumzug stehen noch aus; eine frische Testinstallation ersetzt diese Prüfung nicht.
 
+## Upgrade auf Chart 1.0.4 / UniFi 10.6.109
+
+Das vorbereitete Chart 1.0.4 aktualisiert UniFi von 10.6.106 auf **10.6.109** und
+verwendet LinuxServer **10.6.109-ls153**. UniFi entfernt damit kompromittierte
+eMudhra-CA-Zertifikate aus dem Vertrauensbestand. Die Image-Konfiguration,
+Startskripte, Ports, Datenbankanbindung und Chart-Values bleiben kompatibel.
+Details stehen im [Versionsvergleich](unifi-10.6.109-review.md).
+
+Vor dem Upgrade MongoDB und `/config` sichern. Explizite `image.tag`- und
+`image.digest`-Werte gemeinsam aktualisieren oder beide entfernen, damit die neuen
+Defaults greifen. Den noch unveröffentlichten Chart mit den vollständigen eigenen
+Einstellungen aus diesem Checkout installieren:
+
+```sh
+helm upgrade unifi ./charts/unifi-network-application \
+  --namespace unifi --kube-context YOUR_CONTEXT \
+  --reset-values --values my-values.yaml --wait --timeout 20m
+```
+
+Nach erfolgreicher Veröffentlichung kann der Chartpfad durch
+`codeopsms/unifi-network-application --version 1.0.4` ersetzt werden. Die neue
+Release-Pipeline führt die Laufzeittests im isolierten CI-Cluster aus; die
+veröffentlichten Berichte zu Chart 1.0.3 gelten weiterhin ausschließlich für dessen Archiv.
+
 ## Upgrade auf Chart 1.0.3 / LinuxServer ls150
 
 Chart 1.0.3 aktualisiert das Image von `10.6.106-ls147` auf
@@ -186,7 +210,7 @@ Backups werden außerhalb des Anwendungsvolumes gespeichert, geschützt und rege
 
 ## Rotation von Datenbankzugangsdaten
 
-Das gepinnte LinuxServer-Startskript erzeugt `/config/data/system.properties` nur, wenn diese Datei noch nicht existiert. Die Verbindungswerte bleiben anschließend dort erhalten. Eine Secretänderung, ein Helm-Upgrade oder ein Podneustart allein aktualisiert bestehende URIs nicht. In der Datei enthalten `db.mongo.uri` und `statdb.mongo.uri` die Verbindungsdaten. [Startskript des Images](https://github.com/linuxserver/docker-unifi-network-application/blob/10.6.106-ls150/root/etc/s6-overlay/s6-rc.d/init-unifi-network-application-config/run)
+Das gepinnte LinuxServer-Startskript erzeugt `/config/data/system.properties` nur, wenn diese Datei noch nicht existiert. Die Verbindungswerte bleiben anschließend dort erhalten. Eine Secretänderung, ein Helm-Upgrade oder ein Podneustart allein aktualisiert bestehende URIs nicht. In der Datei enthalten `db.mongo.uri` und `statdb.mongo.uri` die Verbindungsdaten. [Startskript des Images](https://github.com/linuxserver/docker-unifi-network-application/blob/10.6.109-ls153/root/etc/s6-overlay/s6-rc.d/init-unifi-network-application-config/run)
 
 Für eine Rotation mit Rückkehrmöglichkeit:
 

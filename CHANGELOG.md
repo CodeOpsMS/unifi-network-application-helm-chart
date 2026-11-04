@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.0.4 — 2026-11-04 (unreleased)
 
+- Update UniFi Network Application from 10.6.106 to 10.6.109 and the LinuxServer image from `10.6.106-ls150` to `10.6.109-ls153`, pinning the verified AMD64/ARM64 index digest.
+- Include the revocation of compromised eMudhra CA certificates documented in the [UniFi 10.6.109 release notes](https://community.ui.com/releases/UniFi-Network-Application-10-6-109/772020d5-1426-4015-bbd6-631d28803933), plus updated base-image packages.
+- Preserve the values API, external MongoDB, ports, persistence, probes and Java heap settings after reviewing unchanged upstream Dockerfiles, startup scripts and OCI runtime configuration.
+- Align runtime version/digest assertions and required release evidence with 10.6.109. Reject runtime reports from the previously published application version and document the [compatibility review](docs/unifi-10.6.109-review.md).
 - Automate new chart releases after merges to `main`, including isolated Kubernetes integration tests, tag and release creation, GHCR publication and GitHub Pages deployment. Preserve exact tested archives and reject changed charts without a version bump.
 
 ## 1.0.3 — 2026-10-21

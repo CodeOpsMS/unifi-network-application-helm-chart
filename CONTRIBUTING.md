@@ -69,7 +69,7 @@ Use [post-setup-ui.py](scripts/integration/post-setup-ui.py) for an additional i
 ```sh
 source .tools/env.sh
 python3 scripts/integration/post-setup-ui.py \
-  --package build/packages/unifi-network-application-1.0.3.tgz \
+  --package build/packages/unifi-network-application-1.0.4.tgz \
   --context YOUR_CONTEXT --worker YOUR_TEST_WORKER --storage-class YOUR_STORAGE_CLASS \
   --manual-setup --ui-timeout 1800 \
   --evidence build/post-setup-ui \

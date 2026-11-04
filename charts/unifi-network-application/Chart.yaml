@@ -3,8 +3,8 @@ apiVersion: v2
 name: unifi-network-application
 description: UniFi Network Application with an externally managed MongoDB and persistent configuration.
 type: application
-version: 1.0.3
-appVersion: "10.6.106"
+version: 1.0.4
+appVersion: "10.6.109"
 kubeVersion: ">=1.25.0-0"
 home: https://github.com/CodeOpsMS/unifi-network-application-helm-chart
 sources:
@@ -22,14 +22,14 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/changes: |
     - kind: changed
-      description: Update the LinuxServer image to 10.6.106-ls150 with a verified multi-platform digest; UniFi remains at 10.6.106.
+      description: Update UniFi Network Application to 10.6.109 with LinuxServer image 10.6.109-ls153 and a verified multi-platform digest.
     - kind: security
-      description: Include curl, OpenSSL and SQLite security updates documented in Ubuntu USN-8820-1, USN-8861-1 and USN-8775-1.
+      description: Include the revocation of compromised eMudhra CA certificates documented in the UniFi 10.6.109 release notes.
     - kind: changed
       description: Preserve the existing database, storage, port, probe and Java heap configuration after reviewing upstream compatibility.
   artifacthub.io/images: |
     - name: unifi-network-application
-      image: lscr.io/linuxserver/unifi-network-application:10.6.106-ls150@sha256:4d5fc889c2f2c2cecc6b35d4d641780cbedbe90d3a51b8f03283261b137af468
+      image: lscr.io/linuxserver/unifi-network-application:10.6.109-ls153@sha256:3a6a1b86b30070fb2e635e44047801626bc224e7c129c2310f236efaa38c58aa
   artifacthub.io/links: |
     - name: Chart source
       url: https://github.com/CodeOpsMS/unifi-network-application-helm-chart

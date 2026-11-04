@@ -188,7 +188,7 @@ class ReleaseEvidenceTests(unittest.TestCase):
         current = f"unifi-{SMOKE.UNIFI_VERSION}-setup-status-and-runtime-digests"
         for check in self.report["checks"]:
             if check["name"] == current:
-                check["name"] = "unifi-10.6.101-setup-status-and-runtime-digests"
+                check["name"] = "unifi-10.6.106-setup-status-and-runtime-digests"
         with self.assertRaisesRegex(ValueError, "integration evidence"):
             self.verify()
 
