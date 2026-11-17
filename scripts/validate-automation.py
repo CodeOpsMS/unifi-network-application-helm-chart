@@ -175,6 +175,41 @@ class StagingTests(unittest.TestCase):
             automation.stage(self.directory)
         self.assertFalse(any(call.args[0][0] == "gh" for call in self.run.call_args_list))
 
+    def test_new_draft_waits_for_list_visibility_without_recreating(self):
+        self.releases.side_effect = [[], [], [release_record("1.0.3")],
+                                     [release_record(draft=True, assets=[])]]
+        with patch("time.sleep") as sleep:
+            automation.stage(self.directory)
+        commands = [call.args[0] for call in self.run.call_args_list]
+        self.assertEqual(sum(command[:3] == ["gh", "release", "create"] for command in commands), 1)
+        self.assertEqual(sum(command[:3] == ["gh", "release", "upload"] for command in commands), 1)
+        self.assertEqual(sleep.call_count, 2)
+        self.verify.assert_called_once()
+
+    def test_invisible_draft_stops_with_original_artifact_recovery_advice(self):
+        self.releases.return_value = []
+        original = {path.name: path.read_bytes() for path in self.directory.iterdir()}
+        with patch("time.sleep") as sleep, self.assertRaisesRegex(ValueError, "original test artifact"):
+            automation.stage(self.directory)
+        self.assertEqual(sleep.call_count, 12)
+        commands = [call.args[0] for call in self.run.call_args_list]
+        self.assertEqual(sum(command[:3] == ["gh", "release", "create"] for command in commands), 1)
+        self.assertFalse(any(command[:3] == ["gh", "release", "upload"] for command in commands))
+        self.assertEqual(original, {path.name: path.read_bytes() for path in self.directory.iterdir()})
+
+    def test_draft_lookup_api_error_is_not_treated_as_delayed_visibility(self):
+        self.releases.side_effect = [[], RuntimeError("GitHub denied access")]
+        with patch("time.sleep") as sleep, self.assertRaisesRegex(RuntimeError, "denied access"):
+            automation.stage(self.directory)
+        sleep.assert_not_called()
+        self.assertFalse(any(call.args[0][:3] == ["gh", "release", "upload"] for call in self.run.call_args_list))
+
+    def test_release_published_during_draft_lookup_is_not_modified(self):
+        self.releases.side_effect = [[], [release_record(draft=False, assets=[])]]
+        with self.assertRaisesRegex(ValueError, "immutable"):
+            automation.stage(self.directory)
+        self.assertFalse(any(call.args[0][:3] == ["gh", "release", "upload"] for call in self.run.call_args_list))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

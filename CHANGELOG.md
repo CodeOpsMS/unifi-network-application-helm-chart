@@ -1,6 +1,11 @@
 # Changelog
 
-## 1.0.5 — 2026-11-17 (unreleased)
+## Unreleased
+
+- Wait for newly created GitHub release drafts to become visible before uploading assets. Bound retries to 60 seconds, preserve the original tested archive, and reject API errors or already-published releases.
+- Add regressions for delayed and permanently missing drafts, API errors, and publication during draft lookup.
+
+## 1.0.5 — 2026-11-17
 
 - Update the LinuxServer image from `10.6.109-ls153` to `10.6.109-ls154` and pin its verified AMD64/ARM64 index digest. UniFi remains at 10.6.109.
 - Include OpenJDK 25, PCRE2 and CA certificate package updates documented in [USN-9004-1](https://ubuntu.com/security/notices/USN-9004-1), [USN-8974-1](https://ubuntu.com/security/notices/USN-8974-1) and [USN-9001-1](https://ubuntu.com/security/notices/USN-9001-1).
