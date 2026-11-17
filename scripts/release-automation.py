@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 
 import release
 from source_state import assert_unchanged, capture_source
@@ -98,6 +99,23 @@ def collect(directory, evidence):
     shutil.copyfile(summaries[0], directory / "summary.json")
 
 
+def wait_for_draft(version):
+    # A successful create can precede visibility in GitHub's release listing.
+    # Retry only an absent entry; authentication and API errors must still fail.
+    for attempt in range(13):
+        existing = next((item for item in releases() if item["tag_name"] == version), None)
+        if existing is not None:
+            release.require(existing["draft"] is True,
+                            "Published releases are immutable; refusing overwrite")
+            return existing
+        if attempt < 12:
+            if attempt == 0:
+                print(f"Waiting up to 60 seconds for GitHub to list release draft {version}", flush=True)
+            time.sleep(5)
+    raise ValueError(f"Created release draft {version} is still not visible; "
+                     "rerun the failed publish job with its original test artifact")
+
+
 def stage(directory):
     version = chart_version()
     package = directory / f"{release.CHART}-{version}.tgz"
@@ -127,7 +145,7 @@ def stage(directory):
             subprocess.run(["gh", "release", "create", version, "--repo", release.REPOSITORY,
                             "--verify-tag", "--draft", "--title", f"UniFi Network Application Helm chart {version}",
                             "--generate-notes", "--notes-file", str(path)], check=True)
-        existing = next(item for item in releases() if item["tag_name"] == version)
+        existing = wait_for_draft(version)
     assets = {asset["name"]: asset for asset in existing["assets"]}
     missing = []
     for name in sorted(asset_names(version)):

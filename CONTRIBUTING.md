@@ -51,6 +51,12 @@ This writes the chart archive and static report into `build/release-input/`. To 
 
 ### Retrying a release
 
+After creating a draft, the publisher waits up to 60 seconds for it to appear in
+GitHub's release listing. It creates the draft only once, retries only a missing
+entry, and stops on API errors or if the release has already been published.
+If the draft remains invisible, it reports the original-artifact recovery action
+below instead of failing with `StopIteration` or rebuilding the archive.
+
 Use **Re-run failed jobs** on the original workflow run after resolving a transient failure. This preserves its exact commit and previously uploaded test artifact. A complete draft can also resume in a rerun of the whole original workflow: the pipeline downloads its existing archive and reports and verifies them again. It never silently repackages or replaces draft assets. A partial draft requires retrying the failed publishing job with its original artifact; a full rerun stops and explains this instead of mixing evidence from different archives. Tags pointing at a different commit and published releases with missing assets require investigation.
 
 For a new attempt at the current `main` version, **Run workflow** is also available:
