@@ -6,9 +6,9 @@ replicaCount: 1
 
 image:
   repository: lscr.io/linuxserver/unifi-network-application
-  tag: "10.6.109-ls153"
+  tag: "10.6.109-ls154"
   # Change the tag and digest together when upgrading the application.
-  digest: sha256:3a6a1b86b30070fb2e635e44047801626bc224e7c129c2310f236efaa38c58aa
+  digest: sha256:f782b39e005d4c104b2cfa3185594ce93b3c9bd4b0622cc6559d417844d2d037
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 

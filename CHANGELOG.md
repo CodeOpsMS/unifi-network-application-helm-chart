@@ -1,6 +1,14 @@
 # Changelog
 
-## 1.0.4 — 2026-11-04 (unreleased)
+## 1.0.5 — 2026-11-17 (unreleased)
+
+- Update the LinuxServer image from `10.6.109-ls153` to `10.6.109-ls154` and pin its verified AMD64/ARM64 index digest. UniFi remains at 10.6.109.
+- Include OpenJDK 25, PCRE2 and CA certificate package updates documented in [USN-9004-1](https://ubuntu.com/security/notices/USN-9004-1), [USN-8974-1](https://ubuntu.com/security/notices/USN-8974-1) and [USN-9001-1](https://ubuntu.com/security/notices/USN-9001-1).
+- Preserve the values API, templates, external MongoDB, ports, storage, probes and Java heap settings after comparing unchanged Dockerfiles, startup scripts and OCI runtime configuration.
+- Update the integration runner's expected image digests and document the [image compatibility review](docs/unifi-ls154-review.md). Runtime evidence for ls153 does not certify ls154.
+- Align published installation examples with release 1.0.4 while preparing 1.0.5 for the existing automatic release workflow after merge.
+
+## 1.0.4 — 2026-11-04
 
 - Update UniFi Network Application from 10.6.106 to 10.6.109 and the LinuxServer image from `10.6.106-ls150` to `10.6.109-ls153`, pinning the verified AMD64/ARM64 index digest.
 - Include the revocation of compromised eMudhra CA certificates documented in the [UniFi 10.6.109 release notes](https://community.ui.com/releases/UniFi-Network-Application-10-6-109/772020d5-1426-4015-bbd6-631d28803933), plus updated base-image packages.

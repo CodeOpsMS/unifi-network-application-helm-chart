@@ -2,15 +2,16 @@
 
 Deploy one persistent UniFi Network Application instance on Kubernetes with the LinuxServer image and an existing MongoDB server. The chart manages the application, its Service, an optional `/config` PVC, and an optional TLS Ingress. MongoDB is operated separately.
 
-Maintained by [CodeOpsMS](https://github.com/CodeOpsMS). This is a community chart, not a Ubiquiti or LinuxServer product. Released chart version **1.0.3** targets UniFi Network Application **10.6.106** using `lscr.io/linuxserver/unifi-network-application:10.6.106-ls150` with the digest in that release's chart values. UniFi Network Server and UniFi OS Server are different products; this chart packages the Network Application container.
+Maintained by [CodeOpsMS](https://github.com/CodeOpsMS). This is a community chart, not a Ubiquiti or LinuxServer product. Released chart version **1.0.4** targets UniFi Network Application **10.6.109** using `lscr.io/linuxserver/unifi-network-application:10.6.109-ls153` with the digest in that release's chart values. UniFi Network Server and UniFi OS Server are different products; this chart packages the Network Application container.
 
-Chart **1.0.3** includes curl, OpenSSL and SQLite security updates and passed all 13 SUSE-AI integration checks, including cleanup. See the [image compatibility review](docs/unifi-ls150-review.md), [release evidence](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.3) and [upgrade instructions](docs/OPERATIONS.de.md#upgrade-auf-chart-103--linuxserver-ls150).
+Chart **1.0.4** passed all 13 isolated Kubernetes integration checks, including cleanup. See the [compatibility review](docs/unifi-10.6.109-review.md), [release evidence](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.4) and [upgrade instructions](docs/OPERATIONS.de.md#upgrade-auf-chart-104--unifi-106109).
 
-This checkout prepares chart **1.0.4** for UniFi **10.6.109** with LinuxServer
-image **10.6.109-ls153**. See the [compatibility review](docs/unifi-10.6.109-review.md).
-The update branch also includes the previously prepared release automation;
-publication starts after its merge to `main`. The published installation examples
-remain on 1.0.3 until the new release is available.
+This checkout prepares chart **1.0.5** with LinuxServer image **10.6.109-ls154**.
+UniFi remains at **10.6.109**; the image updates OpenJDK, PCRE2 and CA certificate
+packages. See the [image compatibility review](docs/unifi-ls154-review.md) and
+[upgrade instructions](docs/OPERATIONS.de.md#upgrade-auf-chart-105--linuxserver-ls154).
+The existing release pipeline publishes the tested chart after merge to `main`.
+The installation examples use the currently published release **1.0.4**.
 
 ## Install
 
@@ -36,7 +37,7 @@ Copy [examples/values-loadbalancer.yaml](examples/values-loadbalancer.yaml), set
 helm repo add codeopsms https://codeopsms.github.io/unifi-network-application-helm-chart
 helm repo update
 helm upgrade --install unifi codeopsms/unifi-network-application \
-  --version 1.0.3 --namespace unifi --create-namespace \
+  --version 1.0.4 --namespace unifi --create-namespace \
   --kube-context YOUR_CONTEXT --values my-values.yaml \
   --wait --timeout 20m
 ```
@@ -46,14 +47,14 @@ The same chart is published as an OCI artifact:
 ```sh
 helm upgrade --install unifi \
   oci://ghcr.io/codeopsms/helm-charts/unifi-network-application \
-  --version 1.0.3 --namespace unifi --create-namespace \
+  --version 1.0.4 --namespace unifi --create-namespace \
   --kube-context YOUR_CONTEXT --values my-values.yaml \
   --wait --timeout 20m
 ```
 
 Repository source: [CodeOpsMS/unifi-network-application-helm-chart](https://github.com/CodeOpsMS/unifi-network-application-helm-chart). Release channels are populated by the release workflow; an unreleased checkout is installed locally with `helm upgrade --install unifi ./charts/unifi-network-application ...`.
 
-The published installation examples above use release 1.0.3. Both repositories provide the same tested archive. To list this repository under your Artifact Hub account, follow the [registration and publisher verification guide](docs/ARTIFACT-HUB.md).
+The published installation examples above use release 1.0.4. Both repositories provide the same tested archive. To list this repository under your Artifact Hub account, follow the [registration and publisher verification guide](docs/ARTIFACT-HUB.md).
 
 ## Configuration
 
@@ -128,12 +129,12 @@ make validate
 make package
 ```
 
-The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging this checkout writes `build/packages/unifi-network-application-1.0.4.tgz`. The static report records the source commit, working-tree fingerprint, and whether the source is clean. Development checks may run with uncommitted edits, but release verification rejects such evidence. Run the separate integration procedure against those exact bytes from a clean committed source when runtime verification is needed:
+The validation entry point runs the Helm 3 and Helm 4 checks without installing the application into a cluster. Packaging this checkout writes `build/packages/unifi-network-application-1.0.5.tgz`. The static report records the source commit, working-tree fingerprint, and whether the source is clean. Development checks may run with uncommitted edits, but release verification rejects such evidence. Run the separate integration procedure against those exact bytes from a clean committed source when runtime verification is needed:
 
 ```sh
 source .tools/env.sh
 python3 scripts/integration/suseai-smoke.py \
-  --package build/packages/unifi-network-application-1.0.4.tgz \
+  --package build/packages/unifi-network-application-1.0.5.tgz \
   --context suseai --worker laemk8saiworker2 --storage-class harvester \
   --evidence build/integration
 ```
@@ -144,4 +145,4 @@ Read the script and select the intended cluster before running it: unlike render
 
 A merge to `main` automatically publishes a new version from `Chart.yaml` after both Helm validation and all runtime checks pass. The pipeline creates a disposable kind cluster on a GitHub runner, tests the archive, creates its tag and draft release, and publishes the same bytes to GHCR and GitHub Pages. It needs no private-cluster credentials. Unchanged published charts are skipped; changed charts require a version bump. See the [release procedure and retry instructions](CONTRIBUTING.md#release-procedure).
 
-[Release 1.0.3](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.3) provides the chart, [integration summary.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.3/summary.json), and [static validation.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.3/validation.json). These reports identify the tested release source; later documentation and pipeline commits do not change the published archive or its evidence.
+[Release 1.0.4](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.4) provides the chart, [integration summary.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.4/summary.json), and [static validation.json](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/download/1.0.4/validation.json). These reports identify the tested release source; later documentation and pipeline commits do not change the published archive or its evidence.

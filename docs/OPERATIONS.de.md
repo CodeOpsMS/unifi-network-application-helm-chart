@@ -2,18 +2,19 @@
 
 Dieses Chart betreibt eine UniFi Network Application mit externer MongoDB. Die Datenbank einschließlich Benutzerverwaltung, Datensicherung und Updates wird separat bereitgestellt. Der dokumentierte Ausgangscontroller für den geplanten Umzug läuft auf **9.4.19**. Dessen Backup-Wiederherstellung und Geräteumzug stehen noch aus; eine frische Testinstallation ersetzt diese Prüfung nicht.
 
-## Upgrade auf Chart 1.0.4 / UniFi 10.6.109
+## Upgrade auf Chart 1.0.5 / LinuxServer ls154
 
-Das vorbereitete Chart 1.0.4 aktualisiert UniFi von 10.6.106 auf **10.6.109** und
-verwendet LinuxServer **10.6.109-ls153**. UniFi entfernt damit kompromittierte
-eMudhra-CA-Zertifikate aus dem Vertrauensbestand. Die Image-Konfiguration,
-Startskripte, Ports, Datenbankanbindung und Chart-Values bleiben kompatibel.
-Details stehen im [Versionsvergleich](unifi-10.6.109-review.md).
+Das vorbereitete Chart 1.0.5 aktualisiert das Image von `10.6.109-ls153` auf
+**10.6.109-ls154**. UniFi bleibt bei **10.6.109**. Die neuen Pakete enthalten
+Korrekturen für OpenJDK 25, PCRE2 und den Zertifikatsbestand. Image-Konfiguration,
+Startskripte, Datenbankanbindung, Ports und Chart-Values bleiben kompatibel.
+Details stehen im [Imagevergleich](unifi-ls154-review.md).
 
 Vor dem Upgrade MongoDB und `/config` sichern. Explizite `image.tag`- und
 `image.digest`-Werte gemeinsam aktualisieren oder beide entfernen, damit die neuen
-Defaults greifen. Den noch unveröffentlichten Chart mit den vollständigen eigenen
-Einstellungen aus diesem Checkout installieren:
+Defaults greifen. `--reuse-values` kann den bisherigen Image-Pin beibehalten.
+Den noch unveröffentlichten Chart mit den vollständigen eigenen Einstellungen
+lokal aus diesem Checkout installieren:
 
 ```sh
 helm upgrade unifi ./charts/unifi-network-application \
@@ -22,9 +23,33 @@ helm upgrade unifi ./charts/unifi-network-application \
 ```
 
 Nach erfolgreicher Veröffentlichung kann der Chartpfad durch
-`codeopsms/unifi-network-application --version 1.0.4` ersetzt werden. Die neue
-Release-Pipeline führt die Laufzeittests im isolierten CI-Cluster aus; die
-veröffentlichten Berichte zu Chart 1.0.3 gelten weiterhin ausschließlich für dessen Archiv.
+`codeopsms/unifi-network-application --version 1.0.5` ersetzt werden.
+Die Release-Pipeline prüft dafür das neue Archiv im isolierten CI-Cluster.
+Die Berichte zu Chart 1.0.4 gelten ausschließlich für dessen ls153-Archiv.
+
+## Upgrade auf Chart 1.0.4 / UniFi 10.6.109
+
+Chart 1.0.4 aktualisiert UniFi von 10.6.106 auf **10.6.109** und verwendet
+LinuxServer **10.6.109-ls153**. UniFi entfernt damit kompromittierte
+eMudhra-CA-Zertifikate aus dem Vertrauensbestand. Die Image-Konfiguration,
+Startskripte, Ports, Datenbankanbindung und Chart-Values bleiben kompatibel.
+Details stehen im [Versionsvergleich](unifi-10.6.109-review.md).
+
+Vor dem Upgrade MongoDB und `/config` sichern. Explizite `image.tag`- und
+`image.digest`-Werte gemeinsam aktualisieren oder beide entfernen, damit die neuen
+Defaults greifen. Den veröffentlichten Chart mit den vollständigen eigenen
+Einstellungen installieren:
+
+```sh
+helm repo update
+helm upgrade unifi codeopsms/unifi-network-application --version 1.0.4 \
+  --namespace unifi --kube-context YOUR_CONTEXT \
+  --reset-values --values my-values.yaml --wait --timeout 20m
+```
+
+Alle 13 Laufzeitprüfungen einschließlich Bereinigung sind für das veröffentlichte
+1.0.4-Archiv bestanden. Die [Prüfberichte](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.4)
+identifizieren dessen getesteten Commit und Paket-Digest.
 
 ## Upgrade auf Chart 1.0.3 / LinuxServer ls150
 
@@ -210,7 +235,7 @@ Backups werden außerhalb des Anwendungsvolumes gespeichert, geschützt und rege
 
 ## Rotation von Datenbankzugangsdaten
 
-Das gepinnte LinuxServer-Startskript erzeugt `/config/data/system.properties` nur, wenn diese Datei noch nicht existiert. Die Verbindungswerte bleiben anschließend dort erhalten. Eine Secretänderung, ein Helm-Upgrade oder ein Podneustart allein aktualisiert bestehende URIs nicht. In der Datei enthalten `db.mongo.uri` und `statdb.mongo.uri` die Verbindungsdaten. [Startskript des Images](https://github.com/linuxserver/docker-unifi-network-application/blob/10.6.109-ls153/root/etc/s6-overlay/s6-rc.d/init-unifi-network-application-config/run)
+Das gepinnte LinuxServer-Startskript erzeugt `/config/data/system.properties` nur, wenn diese Datei noch nicht existiert. Die Verbindungswerte bleiben anschließend dort erhalten. Eine Secretänderung, ein Helm-Upgrade oder ein Podneustart allein aktualisiert bestehende URIs nicht. In der Datei enthalten `db.mongo.uri` und `statdb.mongo.uri` die Verbindungsdaten. [Startskript des Images](https://github.com/linuxserver/docker-unifi-network-application/blob/10.6.109-ls154/root/etc/s6-overlay/s6-rc.d/init-unifi-network-application-config/run)
 
 Für eine Rotation mit Rückkehrmöglichkeit:
 
@@ -261,4 +286,4 @@ Die separat aufrufbare Clusterintegration ist in [scripts/integration/suseai-smo
 
 Neue Chartversionen werden nach einem Merge nach `main` automatisch veröffentlicht. Die Pipeline prüft beide Helm-Versionen und führt die vollständige Clusterintegration in einem kurzlebigen kind-Cluster auf dem GitHub-Runner aus. Danach erstellt sie Tag, Release und Pakete für GHCR und GitHub Pages. Persönliche Rancher-Zugangsdaten sind dafür nicht erforderlich. Änderungen am gepackten Chart benötigen weiterhin eine neue Version in `Chart.yaml`; reine Dokumentationsänderungen erzeugen kein weiteres Release.
 
-Für lokale Prüfungen stehen `make bootstrap`, `make validate` und der bestehende SUSE-AI-Test weiterhin bereit. `python3 scripts/release-automation.py package` übernimmt das statisch geprüfte Archiv nach `build/release-input/`. Die Veröffentlichung verwendet ausschließlich das Archiv, für das statische und Laufzeitberichte zum gleichen sauberen Commit vorliegen. Die [Prüfberichte zu Release 1.0.3](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.3) bleiben unverändert. Einzelheiten und Wiederholungen fehlgeschlagener Veröffentlichungen stehen in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).
+Für lokale Prüfungen stehen `make bootstrap`, `make validate` und der bestehende SUSE-AI-Test weiterhin bereit. `python3 scripts/release-automation.py package` übernimmt das statisch geprüfte Archiv nach `build/release-input/`. Die Veröffentlichung verwendet ausschließlich das Archiv, für das statische und Laufzeitberichte zum gleichen sauberen Commit vorliegen. Die [Prüfberichte zu Release 1.0.4](https://github.com/CodeOpsMS/unifi-network-application-helm-chart/releases/tag/1.0.4) bleiben unverändert. Einzelheiten und Wiederholungen fehlgeschlagener Veröffentlichungen stehen in [CONTRIBUTING.md](../CONTRIBUTING.md#release-procedure).
