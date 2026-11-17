@@ -3,11 +3,14 @@
 This chart runs one UniFi Network Application instance using the LinuxServer
 image, persistent `/config` storage, and a separately managed MongoDB.
 
-Chart **1.0.4** targets UniFi **10.6.109** with LinuxServer image
-`10.6.109-ls153`, pinned by its multi-platform SHA256 digest for Linux AMD64 and
-ARM64. UniFi revokes compromised eMudhra CA certificates in this release; the
-image also updates system packages. The chart values API and container startup
-configuration remain compatible with chart 1.0.3.
+Chart **1.0.5** targets UniFi **10.6.109** with LinuxServer image
+`10.6.109-ls154`, pinned by its multi-platform SHA256 digest for Linux AMD64 and
+ARM64. The image updates OpenJDK 25, PCRE2 and CA certificate packages, including
+fixes documented in [USN-9004-1](https://ubuntu.com/security/notices/USN-9004-1),
+[USN-8974-1](https://ubuntu.com/security/notices/USN-8974-1) and
+[USN-9001-1](https://ubuntu.com/security/notices/USN-9001-1). The UniFi application
+version, chart values API and container startup configuration remain compatible
+with chart 1.0.4.
 
 Before upgrading, back up MongoDB and `/config`. Use `--reset-values --values
 my-values.yaml` with your reviewed configuration so new chart defaults are loaded.
